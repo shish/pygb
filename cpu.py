@@ -391,7 +391,7 @@ class CPU:
     opDB = opcode("ERR", 4)(lambda self: self._err("DB"))
     opDD = opcode("ERR", 4)(lambda self: self._err("DD"))
     opDE = opcode("ERR", 4)(lambda self: self._err("DE"))
-    opE3 = opcode("ERR", 4)(lambda self: self._err("E3"))
+    # opE3 = opcode("ERR", 4)(lambda self: self._err("E3"))
     opE4 = opcode("ERR", 4)(lambda self: self._err("E4"))
     opEB = opcode("ERR", 4)(lambda self: self._err("EB"))
     opEC = opcode("ERR", 4)(lambda self: self._err("EC"))
@@ -399,6 +399,10 @@ class CPU:
     opF4 = opcode("ERR", 4)(lambda self: self._err("F4"))
     opFC = opcode("ERR", 4)(lambda self: self._err("FC"))
     opFD = opcode("ERR", 4)(lambda self: self._err("FD"))
+
+    @opcode("DBG", 4)
+    def opE3(self):
+        print(self)
     # </editor-fold>
 
     # <editor-fold description="3.3.1 8-Bit Loads">
