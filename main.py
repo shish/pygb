@@ -2,7 +2,6 @@
 
 import sys
 from typing import List
-import time
 from cart import Cart
 from cpu import CPU, OpNotImplemented
 from lcd import LCD
@@ -28,7 +27,6 @@ def run(cart):
 
     running = True
     clock = 0
-    last_frame = time.time()
     while running:
         try:
             if not cpu.halt and not cpu.stop:
@@ -53,7 +51,6 @@ def run(cart):
         # 4MHz / 60FPS ~= 70000 instructions per frame
         if clock > 70224 or clock > 1000:
             # print(last_frame - time.time())
-            last_frame = time.time()
             clock = 0
             if not lcd.update():
                 running = False
