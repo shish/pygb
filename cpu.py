@@ -225,7 +225,7 @@ class CPU:
     # </editor-fold>
 
     # <editor-fold description="Tick">
-    def tick(self):
+    def tick(self, debug=False):
         if self.ram[0xFF50] == 0:
             src = BOOT
         else:
@@ -249,15 +249,10 @@ class CPU:
         if ins == 0xCB:
             ins = src[self.PC + 1]
             cmd = self.cb_ops[ins]
-            if not cmd:
-                raise OpNotImplemented("Opcode CB %02X (@%04X) not implemented" % (ins, self.PC+1))
             self.PC += 1
         else:
             cmd = self.ops[ins]
-            if not cmd:
-                raise OpNotImplemented("Opcode %02X (@%04X) not implemented" % (ins, self.PC))
 
-        debug = False
         if cmd.args == "B":
             param = src[self.PC + 1]
             self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '$%02X' % param)}"
