@@ -261,7 +261,7 @@ class CPU:
             param = src[self.PC + 1]
             if param > 128:
                 param -= 256
-                self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '%d' % param)}"
+            self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '%d' % param)}"
             self.PC += 2
         elif cmd.args == "H":
             param = (src[self.PC + 1]) | (src[self.PC + 2] << 8)
