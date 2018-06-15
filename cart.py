@@ -102,8 +102,9 @@ class Cart:
                 val = mod(val)
             setattr(self, name, val)
 
-        #if self.logo != LOGO:
-        #    raise CorruptCart("Cart logo doesn't match firmware:\n%r\n%r" % (self.logo, LOGO))
+        logo_checksum = sum(list(self.logo))
+        if logo_checksum != 5446:
+            raise CorruptCart("Logo checksum failed: %d != 5446" % logo_checksum)
 
         header_checksum = (sum(struct.unpack("26B", data[0x0134:0x014E])) + 25) & 0xFF
         if header_checksum != 0:
