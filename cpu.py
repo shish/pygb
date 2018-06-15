@@ -1617,7 +1617,9 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
 
     # ===================================
     # 1. RET
-    opC9 = opcode("RET", 8)(lambda self: self._pop16(Reg.PC))
+    @opcode("RET", 8)
+    def opC9(self):
+        self._pop16(Reg.PC)
 
     # ===================================
     # 2. RET cc
