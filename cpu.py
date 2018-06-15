@@ -257,25 +257,28 @@ class CPU:
             param = src[self.PC + 1]
             self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '$%02X' % param)}"
             self.PC += 2
-            cmd(param)
         elif cmd.args == "b":
             param = src[self.PC + 1]
             if param > 128:
                 param -= 256
                 self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '%d' % param)}"
             self.PC += 2
-            cmd(param)
         elif cmd.args == "H":
             param = (src[self.PC + 1]) | (src[self.PC + 2] << 8)
             self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('nn', '$%04X' % param)}"
             self.PC += 3
-            cmd(param)
         else:
+            param = None
             self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name}"
             self.PC += 1
-            cmd()
+
         if debug:
             print(self.debug_str)
+        if param is not None:
+            cmd(param)
+        else:
+            cmd()
+        if debug:
             print(self)
 
         return cmd.cycles
