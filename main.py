@@ -5,6 +5,7 @@ from typing import List
 from cart import Cart
 from cpu import CPU, OpNotImplemented
 from lcd import LCD
+import argparse
 
 
 def info(cart):
@@ -18,12 +19,12 @@ def info(cart):
     #     print("%02X %s" % (n, op.name if op else "-"))
 
 
-def run(cart):
+def run(cart, debug):
     with open(cart, "rb") as fp:
         data = fp.read()
     cart = Cart(data)
-    cpu = CPU(cart)
-    lcd = LCD(cpu)
+    cpu = CPU(cart, debug=debug)
+    lcd = LCD(cpu, debug=debug)
 
     running = True
     clock = 0
@@ -61,22 +62,28 @@ def run(cart):
     dump(cpu, "Safe exit")
 
 
-def dump(cpu, err):
+def dump(cpu: CPU, err: str):
     print("Error: %s\nWriting details to crash.txt" % err)
     with open("crash.txt", "w") as fp:
         fp.write(str(err) + "\n\n")
-        fp.write(str(cpu.debug_str) + "\n\n")
+        fp.write(str(cpu._debug_str) + "\n\n")
         fp.write(str(cpu) + "\n\n")
         for n in range(0x0000, 0xFFFF, 0x0010):
             fp.write(("%04X :" + (" %02X" * 16) + "\n") % (n, *cpu.ram[n:n + 0x0010]))
 
 
-def main(args: List[str]) -> int:
-    if args[1] == "info":
-        info(args[2])
+def main(argv: List[str]) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode")
+    parser.add_argument("cart")
+    parser.add_argument("--debug", action="store_true", default=False)
+    args = parser.parse_args()
 
-    if args[1] == "run":
-        run(args[2])
+    if args.mode == "info":
+        info(args.cart)
+
+    if args.mode == "run":
+        run(args.cart, args.debug)
 
     return 0
 

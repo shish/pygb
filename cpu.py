@@ -77,13 +77,14 @@ def opcode(name, cycles, args=""):
 
 class CPU:
     # <editor-fold description="Init">
-    def __init__(self, cart: Cart=None):
+    def __init__(self, cart: Cart=None, debug=False):
         self.cart = cart or TestCart()
         self.interrupts = True
         self.halt = False
         self.stop = False
         self._nopslide = 0
-        self.debug_str = ""
+        self._debug = debug
+        self._debug_str = ""
 
         # registers
         self.A = 0x01  # GB / SGB. FF=GBP, 11=GBC
@@ -225,7 +226,7 @@ class CPU:
     # </editor-fold>
 
     # <editor-fold description="Tick">
-    def tick(self, debug=False):
+    def tick(self):
         if self.ram[0xFF50] == 0:
             src = BOOT
         else:
@@ -255,30 +256,30 @@ class CPU:
 
         if cmd.args == "B":
             param = src[self.PC + 1]
-            self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '$%02X' % param)}"
+            self._debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '$%02X' % param)}"
             self.PC += 2
         elif cmd.args == "b":
             param = src[self.PC + 1]
             if param > 128:
                 param -= 256
-            self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '%d' % param)}"
+            self._debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('n', '%d' % param)}"
             self.PC += 2
         elif cmd.args == "H":
             param = (src[self.PC + 1]) | (src[self.PC + 2] << 8)
-            self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('nn', '$%04X' % param)}"
+            self._debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name.replace('nn', '$%04X' % param)}"
             self.PC += 3
         else:
             param = None
-            self.debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name}"
+            self._debug_str = f"[{self.PC:04X}({ins:02X})]: {cmd.name}"
             self.PC += 1
 
-        if debug:
-            print(self.debug_str)
+        if self._debug:
+            print(self._debug_str)
         if param is not None:
             cmd(param)
         else:
             cmd()
-        if debug:
+        if self._debug:
             print(self)
 
         return cmd.cycles

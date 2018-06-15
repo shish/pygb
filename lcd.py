@@ -11,9 +11,9 @@ SCALE = 2
 
 
 class LCD:
-    def __init__(self, cpu):
+    def __init__(self, cpu, debug=False):
         self.cpu = cpu
-        self._game_only = True
+        self._game_only = not debug
         self.tiles = []
 
         pygame.init()
