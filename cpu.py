@@ -517,7 +517,7 @@ class CPU:
         self.ram[val] = self.A
 
     op02 = opcode("LD [BC],A", 8)(lambda self: self._ld_a_to_mem(self.BC))
-    op12 = opcode("LD [DE],A", 8)(lambda self: self._ld_a_to_mem(self.BC))
+    op12 = opcode("LD [DE],A", 8)(lambda self: self._ld_a_to_mem(self.DE))
     opEA = opcode("LD [nn],A", 16, 'H')(lambda self, val: self._ld_a_to_mem(val))
 
     # ===================================
