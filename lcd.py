@@ -14,7 +14,7 @@ class LCD:
         if self._game_only:
             self.screen = pygame.display.set_mode((160 * SCALE, 144 * SCALE))
         else:
-            self.screen = pygame.display.set_mode((256 * SCALE, 256 * SCALE))
+            self.screen = pygame.display.set_mode((512 * SCALE, 256 * SCALE))
         pygame.display.set_caption("SPYGB - " + cpu.cart.name.decode())
         self.clock = pygame.time.Clock()
 
@@ -23,7 +23,6 @@ class LCD:
             if event.type == pygame.QUIT:
                 print("Quitting")
                 return False
-
 
         neon = [
             pygame.Color(255, 63, 63),
@@ -38,18 +37,13 @@ class LCD:
             pygame.Color(0, 0, 0),
         ]
         available_colors = default
+
         bgp = [
             available_colors[(self.cpu.ram[0xFF47] >> 0) & 0x3],
             available_colors[(self.cpu.ram[0xFF47] >> 2) & 0x3],
             available_colors[(self.cpu.ram[0xFF47] >> 4) & 0x3],
             available_colors[(self.cpu.ram[0xFF47] >> 6) & 0x3],
         ]
-        #bgp = [
-        #    available_colors[0],
-        #    available_colors[1],
-        #    available_colors[2],
-        #    available_colors[3],
-        #]
         obp0 = [
             available_colors[(self.cpu.ram[0xFF48] >> 0) & 0x3],
             available_colors[(self.cpu.ram[0xFF48] >> 2) & 0x3],
@@ -80,9 +74,14 @@ class LCD:
                     self.screen.blit(self.tiles[tile_id], (x*8*SCALE - SCROLL_X*SCALE, y*8*SCALE - SCROLL_Y*SCALE))
 
         else:
+            for y in range(256 // 8):
+                for x in range(256 // 8):
+                    tile_id = self.cpu.ram[0x9800 + y * 32 + x]
+                    self.screen.blit(self.tiles[tile_id], (x*8*SCALE, y*8*SCALE))
+            pygame.draw.rect(self.screen, pygame.Color(255, 0, 0), (SCROLL_X * SCALE, SCROLL_Y * SCALE, 160 * SCALE, 144 * SCALE), 1)
             for y in range(8):
                 for x in range(32):
-                    self.screen.blit(self.tiles[y*32+x], (x*8*SCALE, y*8*SCALE))
+                    self.screen.blit(self.tiles[y*32+x], (256*SCALE + x*8*SCALE, y*8*SCALE))
 
         pygame.display.update()
         self.clock.tick(60)
