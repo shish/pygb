@@ -297,6 +297,18 @@ class CPU:
         return cmd.cycles
     # </editor-fold>
 
+    # <editor-fold description="Debugger">
+    def debugger(self):
+        while True:
+            cmd = input("dbg> ").split()
+            if cmd[0] == "cpu":
+                print(self)
+            if cmd[0] == "ram":
+                print("%02X" % self.ram[int(cmd[1], 16)])
+            if cmd[0] == "run":
+                break
+    # </editor-fold>
+
     # <editor-fold description="Registers">
     @property
     def AF(self):
