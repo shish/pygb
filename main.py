@@ -19,12 +19,15 @@ def info(cart):
     #     print("%02X %s" % (n, op.name if op else "-"))
 
 
-def run(cart, debug):
+def run(cart, debug, headless):
     with open(cart, "rb") as fp:
         data = fp.read()
     cart = Cart(data)
     cpu = CPU(cart, debug=debug)
-    lcd = LCD(cpu, debug=debug)
+
+    lcd = None
+    if not headless:
+        lcd = LCD(cpu, debug=debug)
 
     running = True
     clock = 0
@@ -53,12 +56,13 @@ def run(cart, debug):
         if clock > 70224 or clock > 1000:
             # print(last_frame - time.time())
             clock = 0
-            if not lcd.update():
+            if lcd and not lcd.update():
                 running = False
     # import collections
     # print(collections.Counter(cpu.ram[0x8000:0xA000]))
     # time.sleep(3)
-    lcd.close()
+    if lcd:
+        lcd.close()
     dump(cpu, "Safe exit")
 
 
@@ -77,13 +81,14 @@ def main(argv: List[str]) -> int:
     parser.add_argument("mode")
     parser.add_argument("cart")
     parser.add_argument("--debug", action="store_true", default=False)
+    parser.add_argument("--headless", action="store_true", default=False)
     args = parser.parse_args()
 
     if args.mode == "info":
         info(args.cart)
 
     if args.mode == "run":
-        run(args.cart, args.debug)
+        run(args.cart, args.debug, args.headless)
 
     return 0
 
