@@ -720,7 +720,7 @@ class CPU:
     opA6 = opcode("AND [HL]", 8)(lambda self: self._and(self.MEM_AT_HL))
     opA7 = opcode("AND A", 4)(lambda self: self._and(self.A))
 
-    opE6 = opcode("AND n", 8, "B")(lambda self, n: self._and(self.ram[n]))
+    opE6 = opcode("AND n", 8, "B")(lambda self, n: self._and(n))
 
     # ===================================
     # 6. OR n
@@ -740,7 +740,7 @@ class CPU:
     opB6 = opcode("OR [HL]", 8)(lambda self: self._or(self.MEM_AT_HL))
     opB7 = opcode("OR A", 4)(lambda self: self._or(self.A))
 
-    opF6 = opcode("OR n", 8, "B")(lambda self, n: self._or(self.ram[n]))
+    opF6 = opcode("OR n", 8, "B")(lambda self, n: self._or(n))
 
     # ===================================
     # 7. XOR
@@ -771,7 +771,7 @@ class CPU:
     opAE = opcode("XOR [HL]", 8)(lambda self: self._xor(self.MEM_AT_HL))
     opAF = opcode("XOR A", 4)(lambda self: self._xor(self.A))
 
-    opEE = opcode("XOR n", 8, "B")(lambda self, n: self._xor(self.ram[n]))
+    opEE = opcode("XOR n", 8, "B")(lambda self, n: self._xor(n))
 
     # ===================================
     # 8. CP
