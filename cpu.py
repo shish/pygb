@@ -115,10 +115,10 @@ class CPU:
         self.PC = 0x0000
 
         # flags
-        self.FLAG_Z = True  # zero
-        self.FLAG_N = False  # subtract
-        self.FLAG_H = True  # half-carry
-        self.FLAG_C = True  # carry
+        self.FLAG_Z: bool = True  # zero
+        self.FLAG_N: bool = False  # subtract
+        self.FLAG_H: bool = True  # half-carry
+        self.FLAG_C: bool = True  # carry
 
         self.ram = [0] * (0xFFFF+1)
 
@@ -595,10 +595,10 @@ class CPU:
     def _push16(self, reg: Reg):
         """
         >>> c = CPU()
-        >>> c.B = 1234
-        >>> c._push16(Reg.B)
-        >>> c._pop16(Reg.A)
-        >>> c.A
+        >>> c.BC = 1234
+        >>> c.opC5()
+        >>> c.opD1()
+        >>> c.DE
         1234
         """
         val = getattr(self, reg.value)
@@ -653,7 +653,22 @@ class CPU:
     # ===================================
     # 2. ADC A,n
     def _adc(self, val):
-        self._add(val + int(self.FLAG_C))
+        """
+        >>> c = CPU()
+        >>> c.FLAG_C = True
+        >>> c.A = 10
+        >>> c.B = 5
+        >>> c.op88()
+        >>> c.A
+        16
+        """
+        carry = int(self.FLAG_C)
+        self.FLAG_C = bool(self.A + val + carry > 0xFF)
+        self.FLAG_H = (self.A & 0x0F) + (val & 0x0F) + carry > 0x0F
+        self.FLAG_N = False
+        self.A += val + carry
+        self.A &= 0xFF
+        self.FLAG_Z = self.A == 0
 
     op88 = opcode("ADC A,B", 4)(lambda self: self._adc(self.B))
     op89 = opcode("ADC A,C", 4)(lambda self: self._adc(self.C))
@@ -690,7 +705,20 @@ class CPU:
     # ===================================
     # 4. SBC n
     def _sbc(self, val):
+        """
+        >>> c = CPU()
+        >>> c.FLAG_C = True
+        >>> c.A = 10
+        >>> c.B = 5
+        >>> c.op98()
+        >>> c.A
+        4
+        """
+        byte1 = self.A
+        byte2 = val
+        res = byte1 - byte2 - int(self.FLAG_C)
         self._sub(val + int(self.FLAG_C))
+        self.FLAG_H = ((byte1 ^ byte2 ^ (res & 0xff)) & (1 << 4)) != 0
 
     op98 = opcode("SBC A,B", 4)(lambda self: self._sbc(self.B))
     op99 = opcode("SBC A,C", 4)(lambda self: self._sbc(self.C))
@@ -1146,7 +1174,7 @@ class CPU:
         >>> c = CPU()
         >>> c.A = 0b10101010
         >>> c.FLAG_C = False
-        >>> c._rl(Reg.A)
+        >>> getattr(c, 'opCB17')()  # generated op
         >>> bin(c.A), c.FLAG_C
         ('0b1010100', True)
         """
@@ -1182,7 +1210,7 @@ class CPU:
         self.FLAG_C = bool(val & 0x1)
         val >>= 1
         if orig_c:
-            val |= 1<<7
+            val |= 1 << 7
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1232,12 +1260,12 @@ class CPU:
     # 2. SET b,r
     # 3. RES b,r
     for b in range(8):
-        for offset, arg in enumerate(GEN_REGS):
+        for offset, reg in enumerate(GEN_REGS):
             op = 0x40 + b * 0x08 + offset
-            time = 16 if arg == "[HL]" else 8
-            arg = arg.replace("[HL]", "MEM_AT_HL")
+            time = 16 if reg == "[HL]" else 8
+            arg = reg.replace("[HL]", "MEM_AT_HL")
             exec(dedent(f"""
-                @opcode("BIT {b},{arg}", {time})
+                @opcode("BIT {b},{reg}", {time})
                 def opCB{op:02X}(self):
                     self.FLAG_Z = bool(self.{arg} & (0x01 << {b}))
                     self.FLAG_N = False
@@ -1245,23 +1273,23 @@ class CPU:
             """))
 
     for b in range(8):
-        for offset, arg in enumerate(GEN_REGS):
+        for offset, reg in enumerate(GEN_REGS):
             op = 0x80 + b * 0x08 + offset
-            time = 16 if arg == "[HL]" else 8
-            arg = arg.replace("[HL]", "MEM_AT_HL")
+            time = 16 if reg == "[HL]" else 8
+            arg = reg.replace("[HL]", "MEM_AT_HL")
             exec(dedent(f"""
-                @opcode("RES {b},{arg}", {time})
+                @opcode("RES {b},{reg}", {time})
                 def opCB{op:02X}(self):
                     self.{arg} &= ((0x01 << {b}) ^ 0xFF)
             """))
 
     for b in range(8):
-        for offset, arg in enumerate(GEN_REGS):
+        for offset, reg in enumerate(GEN_REGS):
             op = 0xC0 + b * 0x08 + offset
-            time = 16 if arg == "[HL]" else 8
-            arg = arg.replace("[HL]", "MEM_AT_HL")
+            time = 16 if reg == "[HL]" else 8
+            arg = reg.replace("[HL]", "MEM_AT_HL")
             exec(dedent(f"""
-                @opcode("SET {b},{arg}", {time})
+                @opcode("SET {b},{reg}", {time})
                 def opCB{op:02X}(self):
                     self.{arg} |= (0x01 << {b})
             """))
