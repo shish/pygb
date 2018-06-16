@@ -104,17 +104,15 @@ class CPU:
         self.FLAG_H = True  # half-carry
         self.FLAG_C = True  # carry
 
-        self.rom = self.cart.data
-
         self.ram = [0] * (0xFFFF+1)
 
         # 16KB ROM bank 0
         for x in range(0x0000, 0x4000):
-            self.ram[x] = self.rom[x]
+            self.ram[x] = self.cart.data[x]
 
         # 16KB Switchable ROM bank
         for x in range(0x4000, 0x8000):
-            self.ram[x] = self.rom[x]
+            self.ram[x] = self.cart.data[x]
 
         # 8KB VRAM
         # 0x8000 - 0xA000
