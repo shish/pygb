@@ -7,6 +7,7 @@ BACKGROUND_MAP_0 = 0x9800
 BACKGROUND_MAP_1 = 0x9C00
 WINDOW_MAP_0 = 0x9800
 WINDOW_MAP_1 = 0x9C00
+OAM_BASE = 0xFE00
 SCALE = 2
 
 
@@ -18,10 +19,12 @@ class LCD:
 
         pygame.init()
         if self._game_only:
+            self.buffer = pygame.Surface((160, 144))
             self.screen = pygame.display.set_mode((160 * SCALE, 144 * SCALE))
         else:
+            self.buffer = pygame.Surface((512, 256))
             self.screen = pygame.display.set_mode((512 * SCALE, 256 * SCALE))
-        pygame.display.set_caption("SPYGB - " + cpu.cart.name.decode())
+        pygame.display.set_caption("SPYGB - " + (cpu.cart.name or "<corrupt>"))
         self.clock = pygame.time.Clock()
 
     def update(self):
@@ -80,15 +83,19 @@ class LCD:
 
         # print("SCROLL ", SCROLL_X, SCROLL_Y)
 
+        # for some reason when using tile map 1, tiles are 0..255,
+        # when using tile map 0, tiles are -128..127
+        self.tiles = []
         if LCDC & LCDC_DATA_SRC:
             table = TILE_DATA_TABLE_1
+            for tile_id in range(0x180):  # 384 tiles
+                self.tiles.append(self.get_tile(table, tile_id, bgp))
         else:
             table = TILE_DATA_TABLE_0
-        self.tiles = []
-        for tile_id in range(0x200):
-            self.tiles.append(self.get_tile(table, tile_id, bgp))
+            # need to figure out how to have a tile array with negative IDs?
+            raise Exception("Loading tiles from map 0 is not supported")
 
-        self.screen.fill(bgp[0])
+        self.buffer.fill(bgp[0])
 
         # Display only valid area
         if self._game_only:
@@ -103,10 +110,16 @@ class LCD:
                     background_map = BACKGROUND_MAP_1
                 else:
                     background_map = BACKGROUND_MAP_0
-                for y in range(144 // 8):
-                    for x in range(160 // 8):
-                        tile_id = self.cpu.ram[background_map + y * 32 + x]
-                        self.screen.blit(self.tiles[tile_id], (x * 8 * SCALE - SCROLL_X * SCALE, y * 8 * SCALE - SCROLL_Y * SCALE))
+                for tile_y in range(18):
+                    for tile_x in range(20):
+                        tile_id = self.cpu.ram[background_map + tile_y * 32 + tile_x]
+                        x = tile_x * 8 - SCROLL_X
+                        y = tile_y * 8 - SCROLL_Y
+                        if x < -8:
+                            x += 256
+                        if y < -8:
+                            y += 256
+                        self.buffer.blit(self.tiles[tile_id], (x, y))
 
             # Window tiles
             if LCDC & LCDC_WINDOW_ENABLED:
@@ -118,7 +131,7 @@ class LCD:
                 for y in range(144 // 8):
                     for x in range(160 // 8):
                         tile_id = self.cpu.ram[window_map + y * 32 + x]
-                        self.screen.blit(self.tiles[tile_id], (x * 8 * SCALE + WND_X * SCALE, y * 8 * SCALE + WND_Y * SCALE))
+                        self.buffer.blit(self.tiles[tile_id], (x * 8 + WND_X, y * 8 + WND_Y))
 
             # Sprites
             if LCDC & LCDC_OBJ_ENABLED:
@@ -126,7 +139,17 @@ class LCD:
                     size = (8, 16)
                 else:
                     size = (8, 8)
-                raise Exception("Sprite mode enabled, but not implemented")
+                # TODO: sorted by x
+                for sprite_id in range(40):
+                    # FIXME: use obp instead of bgp
+                    # + flags support
+                    y, x, tile_id, flags = self.cpu.ram[OAM_BASE + (sprite_id*4):OAM_BASE + (sprite_id*4) + 4]
+                    # Bit7   OBJ-to-BG Priority (0=OBJ Above BG, 1=OBJ Behind BG color 1-3)
+                    #        (Used for both BG and Window. BG color 0 is always behind OBJ)
+                    # Bit6   Y flip          (0=Normal, 1=Vertically mirrored)
+                    # Bit5   X flip          (0=Normal, 1=Horizontally mirrored)
+                    # Bit4   Palette number  **Non CGB Mode Only** (0=OBP0, 1=OBP1)
+                    self.buffer.blit(self.tiles[tile_id], (x, y))
 
         # Display all of VRAM
         else:
@@ -135,26 +158,30 @@ class LCD:
                 background_map = BACKGROUND_MAP_1
             else:
                 background_map = BACKGROUND_MAP_0
-            for y in range(256 // 8):
-                for x in range(256 // 8):
+            for y in range(32):
+                for x in range(32):
                     tile_id = self.cpu.ram[background_map + y * 32 + x]
-                    self.screen.blit(self.tiles[tile_id], (x * 8 * SCALE, y * 8 * SCALE))
+                    self.buffer.blit(self.tiles[tile_id], (x * 8, y * 8))
 
             # Background scroll border
-            pygame.draw.rect(self.screen, pygame.Color(255, 0, 0), (SCROLL_X * SCALE, SCROLL_Y * SCALE, 160 * SCALE, 144 * SCALE), 1)
+            pygame.draw.rect(self.buffer, pygame.Color(255, 0, 0), (SCROLL_X, SCROLL_Y, 160, 144), 1)
 
             # Tile data
-            for y in range(8):
+            for y in range(len(self.tiles) // 32):
                 for x in range(32):
-                    self.screen.blit(self.tiles[y * 32 + x], (256 * SCALE + x * 8 * SCALE, y * 8 * SCALE))
+                    self.buffer.blit(self.tiles[y * 32 + x], (256 + x * 8, y * 8))
 
+        self.screen.blit(
+            pygame.transform.scale(self.buffer, (self.screen.get_width(), self.screen.get_height())),
+            (0, 0)
+        )
         pygame.display.update()
         self.clock.tick(60)
         return True
 
     def get_tile(self, table, tile_id, pallette):
         tile = self.cpu.ram[table + tile_id * 16: table + (tile_id * 16) + 16]
-        surf = pygame.Surface((8 * SCALE, 8 * SCALE))
+        surf = pygame.Surface((8, 8))
 
         for y in range(8):
             for x in range(8):
@@ -163,7 +190,7 @@ class LCD:
                 low_bit = (low_byte >> (7-x)) & 0x1
                 high_bit = (high_byte >> (7-x)) & 0x1
                 px = (high_bit << 1) | low_bit
-                surf.fill(pallette[px], ((x * SCALE, y * SCALE), (SCALE, SCALE)))
+                surf.fill(pallette[px], ((x, y), (1, 1)))
 
         return surf
 
