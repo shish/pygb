@@ -138,12 +138,17 @@ class CPU:
         # IO Ports
         # 0xFF00 - 0xFF4C
         self.ram[0xFF00] = 0x00  # BUTTONS
+
         self.ram[0xFF01] = 0x00  # SB (Serial Data)
         self.ram[0xFF02] = 0x00  # SC (Serial Control)
+
         self.ram[0xFF04] = 0x00  # DIV
         self.ram[0xFF05] = 0x00  # TIMA
         self.ram[0xFF06] = 0x00  # TMA
         self.ram[0xFF07] = 0x00  # TAC
+
+        self.ram[0xFF0F] = 0x00  # IF
+
         self.ram[0xFF10] = 0x80  # NR10
         self.ram[0xFF11] = 0xBF  # NR11
         self.ram[0xFF12] = 0xF3  # NR12
@@ -162,11 +167,14 @@ class CPU:
         self.ram[0xFF24] = 0x77  # NR50
         self.ram[0xFF25] = 0xF3  # NR51
         self.ram[0xFF26] = 0xF1  # NR52  # 0xF0 on SGB
+
         self.ram[0xFF40] = 0x91  # LCDC
+        self.ram[0xFF41] = 0x00  # STAT
         self.ram[0xFF42] = 0x00  # SCX aka SCROLL_Y
         self.ram[0xFF43] = 0x00  # SCY aka SCROLL_X
         self.ram[0xFF44] = 144  # LY aka currently drawn line, 0-153, >144 = vblank
         self.ram[0xFF45] = 0x00  # LYC
+        self.ram[0xFF46] = 0x00  # DMA
         self.ram[0xFF47] = 0xFC  # BGP
         self.ram[0xFF48] = 0xFF  # OBP0
         self.ram[0xFF49] = 0xFF  # OBP1
@@ -225,6 +233,8 @@ class CPU:
 
     # <editor-fold description="Tick">
     def tick(self):
+        # TODO: extra cycles when conditional jumps are taken
+
         if self.ram[0xFF50] == 0:
             src = BOOT
         else:
@@ -379,25 +389,24 @@ class CPU:
     # </editor-fold>
 
     # <editor-fold description="Empty Instructions">
-    @opcode("ERR", 4)
+    @opcode("ERR CB", 4)
     def opCB(self):
         raise OpNotImplemented("CB is special cased, you shouldn't get here")
 
     def _err(self, op):
         raise OpNotImplemented("Opcode D3 not implemented")
 
-    opD3 = opcode("ERR", 4)(lambda self: self._err("D3"))
-    opDB = opcode("ERR", 4)(lambda self: self._err("DB"))
-    opDD = opcode("ERR", 4)(lambda self: self._err("DD"))
-    opDE = opcode("ERR", 4)(lambda self: self._err("DE"))
-    # opE3 = opcode("ERR", 4)(lambda self: self._err("E3"))
-    opE4 = opcode("ERR", 4)(lambda self: self._err("E4"))
-    opEB = opcode("ERR", 4)(lambda self: self._err("EB"))
-    opEC = opcode("ERR", 4)(lambda self: self._err("EC"))
-    opED = opcode("ERR", 4)(lambda self: self._err("ED"))
-    opF4 = opcode("ERR", 4)(lambda self: self._err("F4"))
-    opFC = opcode("ERR", 4)(lambda self: self._err("FC"))
-    opFD = opcode("ERR", 4)(lambda self: self._err("FD"))
+    opD3 = opcode("ERR D3", 4)(lambda self: self._err("D3"))
+    opDB = opcode("ERR DB", 4)(lambda self: self._err("DB"))
+    opDD = opcode("ERR DD", 4)(lambda self: self._err("DD"))
+    # opE3 = opcode("ERR E3", 4)(lambda self: self._err("E3"))
+    opE4 = opcode("ERR E4", 4)(lambda self: self._err("E4"))
+    opEB = opcode("ERR EB", 4)(lambda self: self._err("EB"))
+    opEC = opcode("ERR EC", 4)(lambda self: self._err("EC"))
+    opED = opcode("ERR ED", 4)(lambda self: self._err("ED"))
+    opF4 = opcode("ERR F4", 4)(lambda self: self._err("F4"))
+    opFC = opcode("ERR FC", 4)(lambda self: self._err("FC"))
+    opFD = opcode("ERR FD", 4)(lambda self: self._err("FD"))
 
     @opcode("DBG", 4)
     def opE3(self):
@@ -423,15 +432,6 @@ class CPU:
     # Put r2 into r1
     def _ld_reg_from_reg(self, r1: Reg, r2: Reg):
         setattr(self, r1.value, getattr(self, r2.value))
-
-    op7F = opcode("LD A,A", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.A))
-    op78 = opcode("LD A,B", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.B))
-    op79 = opcode("LD A,C", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.C))
-    op7A = opcode("LD A,D", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.D))
-    op7B = opcode("LD A,E", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.E))
-    op7C = opcode("LD A,H", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.H))
-    op7D = opcode("LD A,L", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.L))
-    op7E = opcode("LD A,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.MEM_AT_HL))
 
     op40 = opcode("LD B,B", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.B))
     op41 = opcode("LD B,C", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.C))
@@ -493,7 +493,16 @@ class CPU:
     op73 = opcode("LD [HL],E", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.E))
     op74 = opcode("LD [HL],H", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.H))
     op75 = opcode("LD [HL],L", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.L))
-    op77 = opcode("LD [HL],A", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.L))
+    op77 = opcode("LD [HL],A", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.A))
+
+    op78 = opcode("LD A,B", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.B))
+    op79 = opcode("LD A,C", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.C))
+    op7A = opcode("LD A,D", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.D))
+    op7B = opcode("LD A,E", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.E))
+    op7C = opcode("LD A,H", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.H))
+    op7D = opcode("LD A,L", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.L))
+    op7E = opcode("LD A,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.MEM_AT_HL))
+    op7F = opcode("LD A,A", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.A))
 
     @opcode("LD [HL],n", 12, "B")
     def op36(self, n):
@@ -569,7 +578,7 @@ class CPU:
 
     # ===================================
     # 19. LDH [n],A
-    @opcode("LDH [n],A", 8, "B")
+    @opcode("LDH [n],A", 12, "B")
     def opE0(self, val):
         if val == 0x01:
             print(chr(self.A), end="")
@@ -578,7 +587,7 @@ class CPU:
 
     # ===================================
     # 20. LDH A,[n]
-    @opcode("LDH A,[n]", 8, "B")
+    @opcode("LDH A,[n]", 12, "B")
     def opF0(self, val):
         self.A = self.ram[0xFF00 + val]
     # </editor-fold>
@@ -708,7 +717,7 @@ class CPU:
     op9C = opcode("SBC A,H", 4)(lambda self: self._sbc(self.H))
     op9D = opcode("SBC A,L", 4)(lambda self: self._sbc(self.L))
     op9E = opcode("SBC A,[HL]", 8)(lambda self: self._sbc(self.ram[self.HL]))
-    # op?? = opcode("SBC A,n", 8, "B")(lambda self, val: self._sbc(val))
+    opDE = opcode("SBC A,n", 8, "B")(lambda self, val: self._sbc(val))
 
     # ===================================
     # 5. AND n
@@ -971,7 +980,7 @@ class CPU:
     # 7. HALT
     # Power down CPU until interrupt occurs
 
-    @opcode("HALT", 4)
+    @opcode("HALT", 0)  # doc says 4
     def op76(self):
         self.halt = True
         # FIXME: weird instruction skipping behaviour when interrupts are disabled
@@ -1215,7 +1224,7 @@ class CPU:
 for offset, op in enumerate(["RLC", "RRC", "RL", "RR", "SLA", "SRA", "SWAP", "SRL"]):
     for code, arg in enumerate(["B", "C", "D", "E", "H", "L", "[HL]", "A"]):
         opcode = (offset * 8) + code
-        time = 16 if arg == "MEM_AT_HL" else 8
+        time = 16 if arg == "[HL]" else 8
         print(
             "opCB%02X = opcode(\"%s %s\", %d)(lambda self: self._%s(Reg.%s))" %
             (opcode, op, arg, time, op.lower(), arg.replace("[HL]", "MEM_AT_HL")))
@@ -1224,7 +1233,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     for b in range(8):
         for code, arg in enumerate(["B", "C", "D", "E", "H", "L", "[HL]", "A"]):
             opcode = 0x40 + (offset * 0x40) + b * 0x08 + code
-            time = 16 if arg == "MEM_AT_HL" else 8
+            time = 16 if arg == "[HL]" else 8
             print(
                 "opCB%02X = opcode(\"%s %d %s\", %d)(lambda self: self._%s(Reg.%s, %d))" %
                 (opcode, op, b, arg, time, op.lower(), arg.replace("[HL]", "MEM_AT_HL"), b))
@@ -1236,7 +1245,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB03 = opcode("RLC E", 8)(lambda self: self._rlc(Reg.E))
     opCB04 = opcode("RLC H", 8)(lambda self: self._rlc(Reg.H))
     opCB05 = opcode("RLC L", 8)(lambda self: self._rlc(Reg.L))
-    opCB06 = opcode("RLC [HL]", 8)(lambda self: self._rlc(Reg.MEM_AT_HL))
+    opCB06 = opcode("RLC [HL]", 16)(lambda self: self._rlc(Reg.MEM_AT_HL))
     opCB07 = opcode("RLC A", 8)(lambda self: self._rlc(Reg.A))
     opCB08 = opcode("RRC B", 8)(lambda self: self._rrc(Reg.B))
     opCB09 = opcode("RRC C", 8)(lambda self: self._rrc(Reg.C))
@@ -1244,7 +1253,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB0B = opcode("RRC E", 8)(lambda self: self._rrc(Reg.E))
     opCB0C = opcode("RRC H", 8)(lambda self: self._rrc(Reg.H))
     opCB0D = opcode("RRC L", 8)(lambda self: self._rrc(Reg.L))
-    opCB0E = opcode("RRC [HL]", 8)(lambda self: self._rrc(Reg.MEM_AT_HL))
+    opCB0E = opcode("RRC [HL]", 16)(lambda self: self._rrc(Reg.MEM_AT_HL))
     opCB0F = opcode("RRC A", 8)(lambda self: self._rrc(Reg.A))
     opCB10 = opcode("RL B", 8)(lambda self: self._rl(Reg.B))
     opCB11 = opcode("RL C", 8)(lambda self: self._rl(Reg.C))
@@ -1252,7 +1261,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB13 = opcode("RL E", 8)(lambda self: self._rl(Reg.E))
     opCB14 = opcode("RL H", 8)(lambda self: self._rl(Reg.H))
     opCB15 = opcode("RL L", 8)(lambda self: self._rl(Reg.L))
-    opCB16 = opcode("RL [HL]", 8)(lambda self: self._rl(Reg.MEM_AT_HL))
+    opCB16 = opcode("RL [HL]", 16)(lambda self: self._rl(Reg.MEM_AT_HL))
     opCB17 = opcode("RL A", 8)(lambda self: self._rl(Reg.A))
     opCB18 = opcode("RR B", 8)(lambda self: self._rr(Reg.B))
     opCB19 = opcode("RR C", 8)(lambda self: self._rr(Reg.C))
@@ -1260,7 +1269,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB1B = opcode("RR E", 8)(lambda self: self._rr(Reg.E))
     opCB1C = opcode("RR H", 8)(lambda self: self._rr(Reg.H))
     opCB1D = opcode("RR L", 8)(lambda self: self._rr(Reg.L))
-    opCB1E = opcode("RR [HL]", 8)(lambda self: self._rr(Reg.MEM_AT_HL))
+    opCB1E = opcode("RR [HL]", 16)(lambda self: self._rr(Reg.MEM_AT_HL))
     opCB1F = opcode("RR A", 8)(lambda self: self._rr(Reg.A))
     opCB20 = opcode("SLA B", 8)(lambda self: self._sla(Reg.B))
     opCB21 = opcode("SLA C", 8)(lambda self: self._sla(Reg.C))
@@ -1268,7 +1277,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB23 = opcode("SLA E", 8)(lambda self: self._sla(Reg.E))
     opCB24 = opcode("SLA H", 8)(lambda self: self._sla(Reg.H))
     opCB25 = opcode("SLA L", 8)(lambda self: self._sla(Reg.L))
-    opCB26 = opcode("SLA [HL]", 8)(lambda self: self._sla(Reg.MEM_AT_HL))
+    opCB26 = opcode("SLA [HL]", 16)(lambda self: self._sla(Reg.MEM_AT_HL))
     opCB27 = opcode("SLA A", 8)(lambda self: self._sla(Reg.A))
     opCB28 = opcode("SRA B", 8)(lambda self: self._sra(Reg.B))
     opCB29 = opcode("SRA C", 8)(lambda self: self._sra(Reg.C))
@@ -1276,7 +1285,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB2B = opcode("SRA E", 8)(lambda self: self._sra(Reg.E))
     opCB2C = opcode("SRA H", 8)(lambda self: self._sra(Reg.H))
     opCB2D = opcode("SRA L", 8)(lambda self: self._sra(Reg.L))
-    opCB2E = opcode("SRA [HL]", 8)(lambda self: self._sra(Reg.MEM_AT_HL))
+    opCB2E = opcode("SRA [HL]", 16)(lambda self: self._sra(Reg.MEM_AT_HL))
     opCB2F = opcode("SRA A", 8)(lambda self: self._sra(Reg.A))
     opCB30 = opcode("SWAP B", 8)(lambda self: self._swap(Reg.B))
     opCB31 = opcode("SWAP C", 8)(lambda self: self._swap(Reg.C))
@@ -1284,7 +1293,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB33 = opcode("SWAP E", 8)(lambda self: self._swap(Reg.E))
     opCB34 = opcode("SWAP H", 8)(lambda self: self._swap(Reg.H))
     opCB35 = opcode("SWAP L", 8)(lambda self: self._swap(Reg.L))
-    opCB36 = opcode("SWAP [HL]", 8)(lambda self: self._swap(Reg.MEM_AT_HL))
+    opCB36 = opcode("SWAP [HL]", 16)(lambda self: self._swap(Reg.MEM_AT_HL))
     opCB37 = opcode("SWAP A", 8)(lambda self: self._swap(Reg.A))
     opCB38 = opcode("SRL B", 8)(lambda self: self._srl(Reg.B))
     opCB39 = opcode("SRL C", 8)(lambda self: self._srl(Reg.C))
@@ -1292,7 +1301,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB3B = opcode("SRL E", 8)(lambda self: self._srl(Reg.E))
     opCB3C = opcode("SRL H", 8)(lambda self: self._srl(Reg.H))
     opCB3D = opcode("SRL L", 8)(lambda self: self._srl(Reg.L))
-    opCB3E = opcode("SRL [HL]", 8)(lambda self: self._srl(Reg.MEM_AT_HL))
+    opCB3E = opcode("SRL [HL]", 16)(lambda self: self._srl(Reg.MEM_AT_HL))
     opCB3F = opcode("SRL A", 8)(lambda self: self._srl(Reg.A))
     opCB40 = opcode("BIT 0,B", 8)(lambda self: self._bit(Reg.B, 0))
     opCB41 = opcode("BIT 0,C", 8)(lambda self: self._bit(Reg.C, 0))
@@ -1300,7 +1309,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB43 = opcode("BIT 0,E", 8)(lambda self: self._bit(Reg.E, 0))
     opCB44 = opcode("BIT 0,H", 8)(lambda self: self._bit(Reg.H, 0))
     opCB45 = opcode("BIT 0,L", 8)(lambda self: self._bit(Reg.L, 0))
-    opCB46 = opcode("BIT 0,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 0))
+    opCB46 = opcode("BIT 0,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 0))
     opCB47 = opcode("BIT 0,A", 8)(lambda self: self._bit(Reg.A, 0))
     opCB48 = opcode("BIT 1,B", 8)(lambda self: self._bit(Reg.B, 1))
     opCB49 = opcode("BIT 1,C", 8)(lambda self: self._bit(Reg.C, 1))
@@ -1308,7 +1317,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB4B = opcode("BIT 1,E", 8)(lambda self: self._bit(Reg.E, 1))
     opCB4C = opcode("BIT 1,H", 8)(lambda self: self._bit(Reg.H, 1))
     opCB4D = opcode("BIT 1,L", 8)(lambda self: self._bit(Reg.L, 1))
-    opCB4E = opcode("BIT 1,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 1))
+    opCB4E = opcode("BIT 1,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 1))
     opCB4F = opcode("BIT 1,A", 8)(lambda self: self._bit(Reg.A, 1))
     opCB50 = opcode("BIT 2,B", 8)(lambda self: self._bit(Reg.B, 2))
     opCB51 = opcode("BIT 2,C", 8)(lambda self: self._bit(Reg.C, 2))
@@ -1316,7 +1325,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB53 = opcode("BIT 2,E", 8)(lambda self: self._bit(Reg.E, 2))
     opCB54 = opcode("BIT 2,H", 8)(lambda self: self._bit(Reg.H, 2))
     opCB55 = opcode("BIT 2,L", 8)(lambda self: self._bit(Reg.L, 2))
-    opCB56 = opcode("BIT 2,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 2))
+    opCB56 = opcode("BIT 2,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 2))
     opCB57 = opcode("BIT 2,A", 8)(lambda self: self._bit(Reg.A, 2))
     opCB58 = opcode("BIT 3,B", 8)(lambda self: self._bit(Reg.B, 3))
     opCB59 = opcode("BIT 3,C", 8)(lambda self: self._bit(Reg.C, 3))
@@ -1324,7 +1333,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB5B = opcode("BIT 3,E", 8)(lambda self: self._bit(Reg.E, 3))
     opCB5C = opcode("BIT 3,H", 8)(lambda self: self._bit(Reg.H, 3))
     opCB5D = opcode("BIT 3,L", 8)(lambda self: self._bit(Reg.L, 3))
-    opCB5E = opcode("BIT 3,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 3))
+    opCB5E = opcode("BIT 3,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 3))
     opCB5F = opcode("BIT 3,A", 8)(lambda self: self._bit(Reg.A, 3))
     opCB60 = opcode("BIT 4,B", 8)(lambda self: self._bit(Reg.B, 4))
     opCB61 = opcode("BIT 4,C", 8)(lambda self: self._bit(Reg.C, 4))
@@ -1332,7 +1341,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB63 = opcode("BIT 4,E", 8)(lambda self: self._bit(Reg.E, 4))
     opCB64 = opcode("BIT 4,H", 8)(lambda self: self._bit(Reg.H, 4))
     opCB65 = opcode("BIT 4,L", 8)(lambda self: self._bit(Reg.L, 4))
-    opCB66 = opcode("BIT 4,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 4))
+    opCB66 = opcode("BIT 4,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 4))
     opCB67 = opcode("BIT 4,A", 8)(lambda self: self._bit(Reg.A, 4))
     opCB68 = opcode("BIT 5,B", 8)(lambda self: self._bit(Reg.B, 5))
     opCB69 = opcode("BIT 5,C", 8)(lambda self: self._bit(Reg.C, 5))
@@ -1340,7 +1349,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB6B = opcode("BIT 5,E", 8)(lambda self: self._bit(Reg.E, 5))
     opCB6C = opcode("BIT 5,H", 8)(lambda self: self._bit(Reg.H, 5))
     opCB6D = opcode("BIT 5,L", 8)(lambda self: self._bit(Reg.L, 5))
-    opCB6E = opcode("BIT 5,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 5))
+    opCB6E = opcode("BIT 5,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 5))
     opCB6F = opcode("BIT 5,A", 8)(lambda self: self._bit(Reg.A, 5))
     opCB70 = opcode("BIT 6,B", 8)(lambda self: self._bit(Reg.B, 6))
     opCB71 = opcode("BIT 6,C", 8)(lambda self: self._bit(Reg.C, 6))
@@ -1348,7 +1357,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB73 = opcode("BIT 6,E", 8)(lambda self: self._bit(Reg.E, 6))
     opCB74 = opcode("BIT 6,H", 8)(lambda self: self._bit(Reg.H, 6))
     opCB75 = opcode("BIT 6,L", 8)(lambda self: self._bit(Reg.L, 6))
-    opCB76 = opcode("BIT 6,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 6))
+    opCB76 = opcode("BIT 6,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 6))
     opCB77 = opcode("BIT 6,A", 8)(lambda self: self._bit(Reg.A, 6))
     opCB78 = opcode("BIT 7,B", 8)(lambda self: self._bit(Reg.B, 7))
     opCB79 = opcode("BIT 7,C", 8)(lambda self: self._bit(Reg.C, 7))
@@ -1356,7 +1365,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB7B = opcode("BIT 7,E", 8)(lambda self: self._bit(Reg.E, 7))
     opCB7C = opcode("BIT 7,H", 8)(lambda self: self._bit(Reg.H, 7))
     opCB7D = opcode("BIT 7,L", 8)(lambda self: self._bit(Reg.L, 7))
-    opCB7E = opcode("BIT 7,[HL]", 8)(lambda self: self._bit(Reg.MEM_AT_HL, 7))
+    opCB7E = opcode("BIT 7,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 7))
     opCB7F = opcode("BIT 7,A", 8)(lambda self: self._bit(Reg.A, 7))
     opCB80 = opcode("RES 0,B", 8)(lambda self: self._res(Reg.B, 0))
     opCB81 = opcode("RES 0,C", 8)(lambda self: self._res(Reg.C, 0))
@@ -1364,7 +1373,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB83 = opcode("RES 0,E", 8)(lambda self: self._res(Reg.E, 0))
     opCB84 = opcode("RES 0,H", 8)(lambda self: self._res(Reg.H, 0))
     opCB85 = opcode("RES 0,L", 8)(lambda self: self._res(Reg.L, 0))
-    opCB86 = opcode("RES 0,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 0))
+    opCB86 = opcode("RES 0,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 0))
     opCB87 = opcode("RES 0,A", 8)(lambda self: self._res(Reg.A, 0))
     opCB88 = opcode("RES 1,B", 8)(lambda self: self._res(Reg.B, 1))
     opCB89 = opcode("RES 1,C", 8)(lambda self: self._res(Reg.C, 1))
@@ -1372,7 +1381,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB8B = opcode("RES 1,E", 8)(lambda self: self._res(Reg.E, 1))
     opCB8C = opcode("RES 1,H", 8)(lambda self: self._res(Reg.H, 1))
     opCB8D = opcode("RES 1,L", 8)(lambda self: self._res(Reg.L, 1))
-    opCB8E = opcode("RES 1,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 1))
+    opCB8E = opcode("RES 1,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 1))
     opCB8F = opcode("RES 1,A", 8)(lambda self: self._res(Reg.A, 1))
     opCB90 = opcode("RES 2,B", 8)(lambda self: self._res(Reg.B, 2))
     opCB91 = opcode("RES 2,C", 8)(lambda self: self._res(Reg.C, 2))
@@ -1380,7 +1389,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB93 = opcode("RES 2,E", 8)(lambda self: self._res(Reg.E, 2))
     opCB94 = opcode("RES 2,H", 8)(lambda self: self._res(Reg.H, 2))
     opCB95 = opcode("RES 2,L", 8)(lambda self: self._res(Reg.L, 2))
-    opCB96 = opcode("RES 2,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 2))
+    opCB96 = opcode("RES 2,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 2))
     opCB97 = opcode("RES 2,A", 8)(lambda self: self._res(Reg.A, 2))
     opCB98 = opcode("RES 3,B", 8)(lambda self: self._res(Reg.B, 3))
     opCB99 = opcode("RES 3,C", 8)(lambda self: self._res(Reg.C, 3))
@@ -1388,7 +1397,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCB9B = opcode("RES 3,E", 8)(lambda self: self._res(Reg.E, 3))
     opCB9C = opcode("RES 3,H", 8)(lambda self: self._res(Reg.H, 3))
     opCB9D = opcode("RES 3,L", 8)(lambda self: self._res(Reg.L, 3))
-    opCB9E = opcode("RES 3,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 3))
+    opCB9E = opcode("RES 3,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 3))
     opCB9F = opcode("RES 3,A", 8)(lambda self: self._res(Reg.A, 3))
     opCBA0 = opcode("RES 4,B", 8)(lambda self: self._res(Reg.B, 4))
     opCBA1 = opcode("RES 4,C", 8)(lambda self: self._res(Reg.C, 4))
@@ -1396,7 +1405,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBA3 = opcode("RES 4,E", 8)(lambda self: self._res(Reg.E, 4))
     opCBA4 = opcode("RES 4,H", 8)(lambda self: self._res(Reg.H, 4))
     opCBA5 = opcode("RES 4,L", 8)(lambda self: self._res(Reg.L, 4))
-    opCBA6 = opcode("RES 4,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 4))
+    opCBA6 = opcode("RES 4,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 4))
     opCBA7 = opcode("RES 4,A", 8)(lambda self: self._res(Reg.A, 4))
     opCBA8 = opcode("RES 5,B", 8)(lambda self: self._res(Reg.B, 5))
     opCBA9 = opcode("RES 5,C", 8)(lambda self: self._res(Reg.C, 5))
@@ -1404,7 +1413,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBAB = opcode("RES 5,E", 8)(lambda self: self._res(Reg.E, 5))
     opCBAC = opcode("RES 5,H", 8)(lambda self: self._res(Reg.H, 5))
     opCBAD = opcode("RES 5,L", 8)(lambda self: self._res(Reg.L, 5))
-    opCBAE = opcode("RES 5,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 5))
+    opCBAE = opcode("RES 5,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 5))
     opCBAF = opcode("RES 5,A", 8)(lambda self: self._res(Reg.A, 5))
     opCBB0 = opcode("RES 6,B", 8)(lambda self: self._res(Reg.B, 6))
     opCBB1 = opcode("RES 6,C", 8)(lambda self: self._res(Reg.C, 6))
@@ -1412,7 +1421,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBB3 = opcode("RES 6,E", 8)(lambda self: self._res(Reg.E, 6))
     opCBB4 = opcode("RES 6,H", 8)(lambda self: self._res(Reg.H, 6))
     opCBB5 = opcode("RES 6,L", 8)(lambda self: self._res(Reg.L, 6))
-    opCBB6 = opcode("RES 6,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 6))
+    opCBB6 = opcode("RES 6,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 6))
     opCBB7 = opcode("RES 6,A", 8)(lambda self: self._res(Reg.A, 6))
     opCBB8 = opcode("RES 7,B", 8)(lambda self: self._res(Reg.B, 7))
     opCBB9 = opcode("RES 7,C", 8)(lambda self: self._res(Reg.C, 7))
@@ -1420,7 +1429,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBBB = opcode("RES 7,E", 8)(lambda self: self._res(Reg.E, 7))
     opCBBC = opcode("RES 7,H", 8)(lambda self: self._res(Reg.H, 7))
     opCBBD = opcode("RES 7,L", 8)(lambda self: self._res(Reg.L, 7))
-    opCBBE = opcode("RES 7,[HL]", 8)(lambda self: self._res(Reg.MEM_AT_HL, 7))
+    opCBBE = opcode("RES 7,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 7))
     opCBBF = opcode("RES 7,A", 8)(lambda self: self._res(Reg.A, 7))
     opCBC0 = opcode("SET 0,B", 8)(lambda self: self._set(Reg.B, 0))
     opCBC1 = opcode("SET 0,C", 8)(lambda self: self._set(Reg.C, 0))
@@ -1428,7 +1437,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBC3 = opcode("SET 0,E", 8)(lambda self: self._set(Reg.E, 0))
     opCBC4 = opcode("SET 0,H", 8)(lambda self: self._set(Reg.H, 0))
     opCBC5 = opcode("SET 0,L", 8)(lambda self: self._set(Reg.L, 0))
-    opCBC6 = opcode("SET 0,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 0))
+    opCBC6 = opcode("SET 0,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 0))
     opCBC7 = opcode("SET 0,A", 8)(lambda self: self._set(Reg.A, 0))
     opCBC8 = opcode("SET 1,B", 8)(lambda self: self._set(Reg.B, 1))
     opCBC9 = opcode("SET 1,C", 8)(lambda self: self._set(Reg.C, 1))
@@ -1436,7 +1445,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBCB = opcode("SET 1,E", 8)(lambda self: self._set(Reg.E, 1))
     opCBCC = opcode("SET 1,H", 8)(lambda self: self._set(Reg.H, 1))
     opCBCD = opcode("SET 1,L", 8)(lambda self: self._set(Reg.L, 1))
-    opCBCE = opcode("SET 1,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 1))
+    opCBCE = opcode("SET 1,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 1))
     opCBCF = opcode("SET 1,A", 8)(lambda self: self._set(Reg.A, 1))
     opCBD0 = opcode("SET 2,B", 8)(lambda self: self._set(Reg.B, 2))
     opCBD1 = opcode("SET 2,C", 8)(lambda self: self._set(Reg.C, 2))
@@ -1444,7 +1453,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBD3 = opcode("SET 2,E", 8)(lambda self: self._set(Reg.E, 2))
     opCBD4 = opcode("SET 2,H", 8)(lambda self: self._set(Reg.H, 2))
     opCBD5 = opcode("SET 2,L", 8)(lambda self: self._set(Reg.L, 2))
-    opCBD6 = opcode("SET 2,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 2))
+    opCBD6 = opcode("SET 2,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 2))
     opCBD7 = opcode("SET 2,A", 8)(lambda self: self._set(Reg.A, 2))
     opCBD8 = opcode("SET 3,B", 8)(lambda self: self._set(Reg.B, 3))
     opCBD9 = opcode("SET 3,C", 8)(lambda self: self._set(Reg.C, 3))
@@ -1452,7 +1461,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBDB = opcode("SET 3,E", 8)(lambda self: self._set(Reg.E, 3))
     opCBDC = opcode("SET 3,H", 8)(lambda self: self._set(Reg.H, 3))
     opCBDD = opcode("SET 3,L", 8)(lambda self: self._set(Reg.L, 3))
-    opCBDE = opcode("SET 3,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 3))
+    opCBDE = opcode("SET 3,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 3))
     opCBDF = opcode("SET 3,A", 8)(lambda self: self._set(Reg.A, 3))
     opCBE0 = opcode("SET 4,B", 8)(lambda self: self._set(Reg.B, 4))
     opCBE1 = opcode("SET 4,C", 8)(lambda self: self._set(Reg.C, 4))
@@ -1460,7 +1469,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBE3 = opcode("SET 4,E", 8)(lambda self: self._set(Reg.E, 4))
     opCBE4 = opcode("SET 4,H", 8)(lambda self: self._set(Reg.H, 4))
     opCBE5 = opcode("SET 4,L", 8)(lambda self: self._set(Reg.L, 4))
-    opCBE6 = opcode("SET 4,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 4))
+    opCBE6 = opcode("SET 4,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 4))
     opCBE7 = opcode("SET 4,A", 8)(lambda self: self._set(Reg.A, 4))
     opCBE8 = opcode("SET 5,B", 8)(lambda self: self._set(Reg.B, 5))
     opCBE9 = opcode("SET 5,C", 8)(lambda self: self._set(Reg.C, 5))
@@ -1468,7 +1477,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBEB = opcode("SET 5,E", 8)(lambda self: self._set(Reg.E, 5))
     opCBEC = opcode("SET 5,H", 8)(lambda self: self._set(Reg.H, 5))
     opCBED = opcode("SET 5,L", 8)(lambda self: self._set(Reg.L, 5))
-    opCBEE = opcode("SET 5,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 5))
+    opCBEE = opcode("SET 5,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 5))
     opCBEF = opcode("SET 5,A", 8)(lambda self: self._set(Reg.A, 5))
     opCBF0 = opcode("SET 6,B", 8)(lambda self: self._set(Reg.B, 6))
     opCBF1 = opcode("SET 6,C", 8)(lambda self: self._set(Reg.C, 6))
@@ -1476,7 +1485,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBF3 = opcode("SET 6,E", 8)(lambda self: self._set(Reg.E, 6))
     opCBF4 = opcode("SET 6,H", 8)(lambda self: self._set(Reg.H, 6))
     opCBF5 = opcode("SET 6,L", 8)(lambda self: self._set(Reg.L, 6))
-    opCBF6 = opcode("SET 6,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 6))
+    opCBF6 = opcode("SET 6,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 6))
     opCBF7 = opcode("SET 6,A", 8)(lambda self: self._set(Reg.A, 6))
     opCBF8 = opcode("SET 7,B", 8)(lambda self: self._set(Reg.B, 7))
     opCBF9 = opcode("SET 7,C", 8)(lambda self: self._set(Reg.C, 7))
@@ -1484,7 +1493,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     opCBFB = opcode("SET 7,E", 8)(lambda self: self._set(Reg.E, 7))
     opCBFC = opcode("SET 7,H", 8)(lambda self: self._set(Reg.H, 7))
     opCBFD = opcode("SET 7,L", 8)(lambda self: self._set(Reg.L, 7))
-    opCBFE = opcode("SET 7,[HL]", 8)(lambda self: self._set(Reg.MEM_AT_HL, 7))
+    opCBFE = opcode("SET 7,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 7))
     opCBFF = opcode("SET 7,A", 8)(lambda self: self._set(Reg.A, 7))
 
     # </editor-fold>
@@ -1492,7 +1501,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     # <editor-fold description="3.3.8 Jumps">
     # ===================================
     # 1. JP nn
-    @opcode("JP nn", 12, "H")
+    @opcode("JP nn", 16, "H")  # doc says 12
     def opC3(self, nn):
         self.PC = nn
 
@@ -1527,7 +1536,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
 
     # ===================================
     # 4. JR n
-    @opcode("JR n", 8, "b")
+    @opcode("JR n", 12, "b")  # doc says 8
     def op18(self, n):
         self.PC += n
 
@@ -1558,7 +1567,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
     # <editor-fold description="3.3.9 Calls">
     # ===================================
     # 1. CALL nn
-    @opcode("CALL nn", 12, "H")
+    @opcode("CALL nn", 24, "H")  # doc says 12
     def opCD(self, nn):
         self._push16(Reg.PC)
         self.PC = nn
@@ -1602,21 +1611,22 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
         self._push16(Reg.PC)
         self.PC = val
 
-    opC7 = opcode("RST 00", 32)(lambda self: self._rst(0x00))
-    opCF = opcode("RST 08", 32)(lambda self: self._rst(0x08))
-    opD7 = opcode("RST 10", 32)(lambda self: self._rst(0x10))
-    opDF = opcode("RST 18", 32)(lambda self: self._rst(0x18))
-    opE7 = opcode("RST 20", 32)(lambda self: self._rst(0x20))
-    opEF = opcode("RST 28", 32)(lambda self: self._rst(0x28))
-    opF7 = opcode("RST 30", 32)(lambda self: self._rst(0x30))
-    opFF = opcode("RST 38", 32)(lambda self: self._rst(0x38))
+    # doc says 32 cycles, test says 16
+    opC7 = opcode("RST 00", 16)(lambda self: self._rst(0x00))
+    opCF = opcode("RST 08", 16)(lambda self: self._rst(0x08))
+    opD7 = opcode("RST 10", 16)(lambda self: self._rst(0x10))
+    opDF = opcode("RST 18", 16)(lambda self: self._rst(0x18))
+    opE7 = opcode("RST 20", 16)(lambda self: self._rst(0x20))
+    opEF = opcode("RST 28", 16)(lambda self: self._rst(0x28))
+    opF7 = opcode("RST 30", 16)(lambda self: self._rst(0x30))
+    opFF = opcode("RST 38", 16)(lambda self: self._rst(0x38))
     # </editor-fold>
 
     # <editor-fold description="3.3.11 Returns">
 
     # ===================================
     # 1. RET
-    @opcode("RET", 8)
+    @opcode("RET", 16)  # doc says 8
     def opC9(self):
         self._pop16(Reg.PC)
 
@@ -1644,7 +1654,7 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
 
     # ===================================
     # 3. RETI
-    @opcode("RETI", 8)
+    @opcode("RETI", 16)  # doc says 8
     def opD9(self):
         self._pop16(Reg.PC)
         self.interrupts = True
