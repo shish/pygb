@@ -2,6 +2,11 @@ from enum import Enum
 from cart import Cart, TestCart
 from textwrap import dedent
 
+
+# 01 - special: DAA fails
+# 02 - interrupts: not started
+# 03 - op sp,hl:
+
 try:
     # boot with the logo scroll if we have a boot rom
     with open("boot.gb", "rb") as fp:
@@ -567,11 +572,11 @@ class CPU:
     # 4. LDHL SP,n
     @opcode("LD HL,SP+n", 12, "B")
     def opF8(self, val):
+        self.FLAG_H = ((((self.SP & 0x0f) + (val & 0x0f)) & 0x10) != 0)
+        self.FLAG_C = ((((self.SP & 0xff) + (val & 0xff)) & 0x100) != 0)
         self.HL = self.SP + val
         self.FLAG_Z = False
         self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: Set or reset according to operation
-        self.FLAG_C = None  # FIXME: Set or reset according to operation
 
     # ===================================
     # 5. LD [nn],SP
@@ -621,12 +626,12 @@ class CPU:
     # ===================================
     # 1. ADD A,n
     def _add(self, val):
+        self.FLAG_C = self.A + val > 0xFF
+        self.FLAG_H = (self.A & 0x0F) + (val & 0x0F) > 0x0F
+        self.FLAG_N = False
         self.A += val
         self.A &= 0xFF
         self.FLAG_Z = self.A == 0
-        self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: Set if carry from bit 3
-        self.FLAG_C = None  # FIXME: Set if carry from bit 7
 
     op80 = opcode("ADD A,B", 4)(lambda self: self._add(self.B))
     op81 = opcode("ADD A,C", 4)(lambda self: self._add(self.C))
@@ -642,12 +647,7 @@ class CPU:
     # ===================================
     # 2. ADC A,n
     def _adc(self, val):
-        self.A += val + int(self.FLAG_C)
-        self.A &= 0xFF
-        self.FLAG_Z = self.A == 0
-        self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: Set if carry from bit 3
-        self.FLAG_C = None  # FIXME: Set if carry from bit 7
+        self._add(val + int(self.FLAG_C))
 
     op88 = opcode("ADC A,B", 4)(lambda self: self._adc(self.B))
     op89 = opcode("ADC A,C", 4)(lambda self: self._adc(self.C))
@@ -663,12 +663,12 @@ class CPU:
     # ===================================
     # 3. SUB n
     def _sub(self, val):
+        self.FLAG_C = self.A < val
+        self.FLAG_H = (self.A & 0x0F) < (val & 0x0F)
         self.A -= val
-        self.FLAG_C = self.A < 0  # ??? FIXME: Set if no borrow
         self.A &= 0xFF
         self.FLAG_Z = self.A == 0
         self.FLAG_N = True
-        self.FLAG_H = None  # FIXME: Set if borrow from bit 4
 
     op90 = opcode("SUB A,B", 4)(lambda self: self._sub(self.B))
     op91 = opcode("SUB A,C", 4)(lambda self: self._sub(self.C))
@@ -684,12 +684,7 @@ class CPU:
     # ===================================
     # 4. SBC n
     def _sbc(self, val):
-        self.A -= val + int(self.FLAG_C)
-        self.A &= 0xFF
-        self.FLAG_Z = self.A == 0
-        self.FLAG_N = True
-        self.FLAG_H = None  # FIXME: Set if no borrow from bit 4
-        self.FLAG_C = None  # FIXME: Set if no borrow
+        self._sub(val + int(self.FLAG_C))
 
     op98 = opcode("SBC A,B", 4)(lambda self: self._sbc(self.B))
     op99 = opcode("SBC A,C", 4)(lambda self: self._sbc(self.C))
@@ -779,7 +774,7 @@ class CPU:
     def _cp(self, n):
         self.FLAG_Z = self.A == n
         self.FLAG_N = True
-        self.FLAG_H = None  # FIXME: Set if no borrow from bit 4
+        self.FLAG_H = (self.A & 0x0F) < (n & 0x0F)
         self.FLAG_C = self.A < n
 
     opB8 = opcode("CP B", 4)(lambda self: self._cp(self.B))
@@ -797,11 +792,11 @@ class CPU:
     # 9. INC
     def _inc8(self, reg):
         val = getattr(self, reg) + 1
+        self.FLAG_H = val & 0x0F == 0x0F
         val &= 0xFF
         setattr(self, reg, val)
         self.FLAG_Z = getattr(self, reg) == 0
         self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: "Set if carry from bit 3"
 
     op04 = opcode("INC B", 4)(lambda self: self._inc8("B"))
     op0C = opcode("INC C", 4)(lambda self: self._inc8("C"))
@@ -816,11 +811,11 @@ class CPU:
     # 10. DEC
     def _dec8(self, reg):
         val = getattr(self, reg) - 1
+        self.FLAG_H = val & 0x0F == 0x00
         val &= 0xFF
         setattr(self, reg, val)
         self.FLAG_Z = getattr(self, reg) == 0
         self.FLAG_N = True
-        self.FLAG_H = None  # FIXME: "Set if no borrow from bit 4"
 
     op05 = opcode("DEC B", 4)(lambda self: self._dec8("B"))
     op0D = opcode("DEC C", 4)(lambda self: self._dec8("C"))
@@ -837,11 +832,11 @@ class CPU:
     # ===================================
     # 1. ADD HL,nn
     def _add_hl(self, val):
+        self.FLAG_H = ((self.HL & 0x0fff) + (val & 0x0fff) > 0x0fff)
+        self.FLAG_C = (self.HL + val > 0xffff)
         self.HL += val
         self.HL &= 0xFFFF
         self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: Set if carry from bit 11
-        self.FLAG_C = None  # FIXME: Set if carry from bit 15
 
     op09 = opcode("ADD HL,BC", 8)(lambda self: self._add_hl(self.BC))
     op19 = opcode("ADD HL,DE", 8)(lambda self: self._add_hl(self.DE))
@@ -852,12 +847,12 @@ class CPU:
     # 2. ADD SP,n
     @opcode("ADD SP n", 16, "B")
     def opE8(self, val):
+        self.FLAG_H = ((self.SP & 0x0fff) + (val & 0x0fff) > 0x0fff)
+        self.FLAG_C = (self.SP + val > 0xffff)
         self.SP += val
         self.SP &= 0xFFFF
         self.FLAG_Z = False
         self.FLAG_N = False
-        self.FLAG_H = None  # FIXME: Set or reset according to operation
-        self.FLAG_C = None  # FIXME: Set or reset according to operation
 
     # ===================================
     # 3. INC nn
@@ -908,7 +903,29 @@ class CPU:
         >>> bin(c.A)
         '0b10010010'
         """
-        self.A = (((self.A // 10) & 0xF) << 4) | ((self.A % 10) & 0xF)
+        tmp = self.A
+
+        if self.FLAG_N == 0:
+            if self.FLAG_H or (tmp & 0x0F) > 9:
+                tmp += 6
+            if self.FLAG_C or tmp > 0x9F:
+                tmp += 0x60
+        else:
+            if self.FLAG_H:
+                tmp -= 6
+                if self.FLAG_C == 0:
+                    tmp &= 0xFF
+
+            if self.FLAG_C:
+                tmp -= 0x60
+
+        self.FLAG_H = False
+        self.FLAG_Z = False
+        if tmp & 0x100:
+            self.FLAG_C = True
+        self.A = tmp & 0xFF
+        if self.A == 0:
+            self.FLAG_Z = True
 
     # ===================================
     # 3. CPL
