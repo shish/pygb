@@ -1001,14 +1001,14 @@ class CPU:
 
     # <editor-fold description="3.3.6 Rotates & Shifts">
     for base, ins in enumerate(["RLC", "RRC", "RL", "RR", "SLA", "SRA", "SWAP", "SRL"]):
-        for offset, arg in enumerate(GEN_REGS):
+        for offset, reg in enumerate(GEN_REGS):
             op = (base * 8) + offset
-            time = 16 if arg == "[HL]" else 8
-            arg = arg.replace("[HL]", "MEM_AT_HL")
+            time = 16 if reg == "[HL]" else 8
+            regn = reg.replace("[HL]", "MEM_AT_HL")
             exec(dedent(f"""
-                @opcode("{ins} {arg}", {time})
+                @opcode("{ins} {reg}", {time})
                 def opCB{op:02X}(self):
-                    self._{ins.lower()}(Reg.{arg})
+                    self._{ins.lower()}(Reg.{regn})
             """))
 
     # ===================================
