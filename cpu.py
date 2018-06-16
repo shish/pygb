@@ -885,8 +885,10 @@ class CPU:
     # 1. SWAP
     # FIXME: CB36 takes 16 cycles, not 8
     def _swap(self, reg: Reg):
-        setattr(self, reg.value, ((getattr(self, reg.value) & 0xF0) >> 4) | ((getattr(self, reg.value) & 0x0F) << 4))
-        self.FLAG_Z = getattr(self, reg.value) == 0
+        val = getattr(self, reg.value)
+        val = ((val & 0xF0) >> 4) | ((val & 0x0F) << 4)
+        setattr(self, reg.value, val)
+        self.FLAG_Z = val == 0
         self.FLAG_N = False
         self.FLAG_H = False
         self.FLAG_C = False
@@ -940,6 +942,8 @@ class CPU:
         '0b1010101'
         """
         self.A ^= 0xFF
+        self.FLAG_N = True
+        self.FLAG_H = True
 
     # ===================================
     # 4. CCF
@@ -1109,6 +1113,8 @@ class CPU:
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0b10000000)
         val <<= 1
+        if self.FLAG_C:
+            val |= 1
         setattr(self, reg.value, val & 0xFF)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1125,9 +1131,12 @@ class CPU:
         >>> bin(c.A), c.FLAG_C
         ('0b1010100', True)
         """
+        orig_c = self.FLAG_C
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0b10000000)
         val <<= 1
+        if orig_c:
+            val |= 1
         setattr(self, reg.value, val & 0xFF)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1139,6 +1148,8 @@ class CPU:
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0x1)
         val >>= 1
+        if self.FLAG_C:
+            val |= 0b10000000
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1147,9 +1158,12 @@ class CPU:
     # ===================================
     # 8. RR
     def _rr(self, reg: Reg):
+        orig_c = self.FLAG_C
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0x1)
         val >>= 1
+        if orig_c:
+            val |= 1<<7
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1161,6 +1175,7 @@ class CPU:
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0b10000000)
         val <<= 1
+        val &= 0xFF
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1185,7 +1200,6 @@ class CPU:
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0x1)
         val >>= 1
-        val &= 0b01111111
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
