@@ -3,9 +3,10 @@ from cart import Cart, TestCart
 from textwrap import dedent
 
 
-# 01 - special: DAA fails
+# 01 - special: PASS
 # 02 - interrupts: not started
-# 03 - op sp,hl:
+# 03 - op sp,hl: Fail
+# 04 - CE DE failed
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -791,9 +792,9 @@ class CPU:
     # ===================================
     # 9. INC
     def _inc8(self, reg: Reg):
-        val = getattr(self, reg.value) + 1
+        val = getattr(self, reg.value)
         self.FLAG_H = val & 0x0F == 0x0F
-        val &= 0xFF
+        val = (val + 1) & 0xFF
         setattr(self, reg.value, val)
         self.FLAG_Z = val == 0
         self.FLAG_N = False
@@ -810,9 +811,9 @@ class CPU:
     # ===================================
     # 10. DEC
     def _dec8(self, reg: Reg):
-        val = getattr(self, reg.value) - 1
+        val = getattr(self, reg.value)
         self.FLAG_H = val & 0x0F == 0x00
-        val &= 0xFF
+        val = (val - 1) & 0xFF
         setattr(self, reg.value, val)
         self.FLAG_Z = val == 0
         self.FLAG_N = True
