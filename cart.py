@@ -120,5 +120,5 @@ class Cart:
 
 class TestCart(Cart):
     def __init__(self):
-        with open("tetris.gb", "rb") as fp:
+        with open("test_hello.gb", "rb") as fp:
             Cart.__init__(self, fp.read())
