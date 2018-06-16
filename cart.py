@@ -74,7 +74,7 @@ class Cart:
             ("256x", "rsts", None),
             ("4B", "init", None),
             ("48B", "logo", None),
-            ("15s", "name", lambda x: x.strip(b"\x00")),
+            ("15s", "name", lambda x: x.strip(b"\x00").decode()),
             ("B", "is_gbc", lambda x: x == 0x80),
             ("H", "licensee", None),
             ("B", "is_sgb", lambda x: x == 0x03),
