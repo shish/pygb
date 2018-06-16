@@ -58,12 +58,9 @@ def run(cart, debug, headless):
             clock = 0
             if lcd and not lcd.update():
                 running = False
-    # import collections
-    # print(collections.Counter(cpu.ram[0x8000:0xA000]))
-    # time.sleep(3)
+
     if lcd:
         lcd.close()
-    dump(cpu, "Safe exit")
 
 
 def dump(cpu: CPU, err: str):
