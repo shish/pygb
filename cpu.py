@@ -6,7 +6,7 @@ from textwrap import dedent
 # 01 - special:     PASS
 # 02 - interrupts:  Fail...
 # 03 - op sp,hl:    Fail...
-# 04 - op r,imm:    Fail...
+# 04 - op r,imm:    PASS
 # 05 - op rp:       PASS
 # 06 - ld r,r:      PASS
 # 07 - jumps:       Fail...
@@ -664,7 +664,7 @@ class CPU:
         """
         carry = int(self.FLAG_C)
         self.FLAG_C = bool(self.A + val + int(self.FLAG_C) > 0xFF)
-        self.FLAG_H = (self.A & 0x0F) + (val & 0x0F) + int(self.FLAG_C) > 0x0F
+        self.FLAG_H = (self.A & 0x0F) + (val & 0x0F) + carry > 0x0F
         self.FLAG_N = False
         self.A += val + carry
         self.A &= 0xFF
