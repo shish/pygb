@@ -223,7 +223,7 @@ class CPU:
             % (
                 self.FLAG_Z or 0, self.FLAG_N or 0, self.FLAG_H or 0, self.FLAG_C or 0,
                 self.PC, self.SP,
-                self.ram[self.SP], self.ram[self.SP+1],
+                self.ram[self.SP], self.ram[(self.SP+1) % len(self.ram)],
             )
         )
         if (
@@ -790,41 +790,41 @@ class CPU:
 
     # ===================================
     # 9. INC
-    def _inc8(self, reg):
-        val = getattr(self, reg) + 1
+    def _inc8(self, reg: Reg):
+        val = getattr(self, reg.value) + 1
         self.FLAG_H = val & 0x0F == 0x0F
         val &= 0xFF
-        setattr(self, reg, val)
-        self.FLAG_Z = getattr(self, reg) == 0
+        setattr(self, reg.value, val)
+        self.FLAG_Z = val == 0
         self.FLAG_N = False
 
-    op04 = opcode("INC B", 4)(lambda self: self._inc8("B"))
-    op0C = opcode("INC C", 4)(lambda self: self._inc8("C"))
-    op14 = opcode("INC D", 4)(lambda self: self._inc8("D"))
-    op1C = opcode("INC E", 4)(lambda self: self._inc8("E"))
-    op24 = opcode("INC H", 4)(lambda self: self._inc8("H"))
-    op2C = opcode("INC L", 4)(lambda self: self._inc8("L"))
-    op34 = opcode("INC [HL]", 12)(lambda self: self._inc8("MEM_AT_HL"))
-    op3C = opcode("INC A", 4)(lambda self: self._inc8("A"))
+    op04 = opcode("INC B", 4)(lambda self: self._inc8(Reg.B))
+    op0C = opcode("INC C", 4)(lambda self: self._inc8(Reg.C))
+    op14 = opcode("INC D", 4)(lambda self: self._inc8(Reg.D))
+    op1C = opcode("INC E", 4)(lambda self: self._inc8(Reg.E))
+    op24 = opcode("INC H", 4)(lambda self: self._inc8(Reg.H))
+    op2C = opcode("INC L", 4)(lambda self: self._inc8(Reg.L))
+    op34 = opcode("INC [HL]", 12)(lambda self: self._inc8(Reg.MEM_AT_HL))
+    op3C = opcode("INC A", 4)(lambda self: self._inc8(Reg.A))
 
     # ===================================
     # 10. DEC
-    def _dec8(self, reg):
-        val = getattr(self, reg) - 1
+    def _dec8(self, reg: Reg):
+        val = getattr(self, reg.value) - 1
         self.FLAG_H = val & 0x0F == 0x00
         val &= 0xFF
-        setattr(self, reg, val)
-        self.FLAG_Z = getattr(self, reg) == 0
+        setattr(self, reg.value, val)
+        self.FLAG_Z = val == 0
         self.FLAG_N = True
 
-    op05 = opcode("DEC B", 4)(lambda self: self._dec8("B"))
-    op0D = opcode("DEC C", 4)(lambda self: self._dec8("C"))
-    op15 = opcode("DEC D", 4)(lambda self: self._dec8("D"))
-    op1D = opcode("DEC E", 4)(lambda self: self._dec8("E"))
-    op25 = opcode("DEC H", 4)(lambda self: self._dec8("H"))
-    op2D = opcode("DEC L", 4)(lambda self: self._dec8("L"))
-    op35 = opcode("DEC [HL]", 12)(lambda self: self._dec8("MEM_AT_HL"))
-    op3D = opcode("DEC A", 4)(lambda self: self._dec8("A"))
+    op05 = opcode("DEC B", 4)(lambda self: self._dec8(Reg.B))
+    op0D = opcode("DEC C", 4)(lambda self: self._dec8(Reg.C))
+    op15 = opcode("DEC D", 4)(lambda self: self._dec8(Reg.D))
+    op1D = opcode("DEC E", 4)(lambda self: self._dec8(Reg.E))
+    op25 = opcode("DEC H", 4)(lambda self: self._dec8(Reg.H))
+    op2D = opcode("DEC L", 4)(lambda self: self._dec8(Reg.L))
+    op35 = opcode("DEC [HL]", 12)(lambda self: self._dec8(Reg.MEM_AT_HL))
+    op3D = opcode("DEC A", 4)(lambda self: self._dec8(Reg.A))
     # </editor-fold>
 
     # <editor-fold description="3.3.4 16-Bit Arithmetic">
@@ -995,7 +995,7 @@ class CPU:
 
     @opcode("STOP", 4, "B")
     def op10(self, sub):  # 10 00
-        if sub == 10:
+        if sub == 00:
             self.stop = True
         else:
             raise OpNotImplemented("Missing sub-command 10:%02X" % sub)
