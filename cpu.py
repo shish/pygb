@@ -427,6 +427,7 @@ class CPU:
     @opcode("DBG", 4)
     def opE3(self):
         print(self)
+        self.debugger()
     # </editor-fold>
 
     # <editor-fold description="3.3.1 8-Bit Loads">
