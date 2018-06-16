@@ -1,6 +1,6 @@
 from enum import Enum
 from cart import Cart, TestCart
-
+from textwrap import dedent
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -60,6 +60,9 @@ class Reg(Enum):
     PC = "PC"
 
     MEM_AT_HL = "MEM_AT_HL"
+
+
+GEN_REGS = ["B", "C", "D", "E", "H", "L", "[HL]", "A"]
 
 
 class OpNotImplemented(Exception):
@@ -416,97 +419,33 @@ class CPU:
     # <editor-fold description="3.3.1 8-Bit Loads">
     # ===================================
     # 1. LD nn,n
-    def _ld_val_to_reg(self, val, reg: Reg):
-        setattr(self, reg.value, val)
-
-    # 8-bit Loads
-    op06 = opcode("LD B,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.B))
-    op0E = opcode("LD C,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.C))
-    op16 = opcode("LD D,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.D))
-    op1E = opcode("LD E,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.E))
-    op26 = opcode("LD H,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.H))
-    op2E = opcode("LD L,n", 8, "B")(lambda self, val: self._ld_val_to_reg(val, Reg.L))
+    for base, reg_to in enumerate(GEN_REGS):
+        cycles = 12 if "[HL]" in {reg_to} else 8
+        op = 0x06 + base * 8
+        reg_to_name = reg_to.replace('[HL]', 'MEM_AT_HL')
+        exec(dedent(f"""
+            @opcode("LD {reg_to},n", {cycles}, "B")
+            def op{op:02X}(self, val):
+                self.{reg_to_name} = val
+        """))
 
     # ===================================
     # 2. LD r1,r2
     # Put r2 into r1
-    def _ld_reg_from_reg(self, r1: Reg, r2: Reg):
-        setattr(self, r1.value, getattr(self, r2.value))
+    for base, reg_to in enumerate(GEN_REGS):
+        for offset, reg_from in enumerate(GEN_REGS):
+            if reg_from == "[HL]" and reg_to == "[HL]":
+                continue
 
-    op40 = opcode("LD B,B", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.B))
-    op41 = opcode("LD B,C", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.C))
-    op42 = opcode("LD B,D", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.D))
-    op43 = opcode("LD B,E", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.E))
-    op44 = opcode("LD B,H", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.H))
-    op45 = opcode("LD B,L", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.L))
-    op46 = opcode("LD B,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.MEM_AT_HL))
-    op47 = opcode("LD B,A", 4)(lambda self: self._ld_reg_from_reg(Reg.B, Reg.A))
-
-    op48 = opcode("LD C,B", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.B))
-    op49 = opcode("LD C,C", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.C))
-    op4A = opcode("LD C,D", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.D))
-    op4B = opcode("LD C,E", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.E))
-    op4C = opcode("LD C,H", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.H))
-    op4D = opcode("LD C,L", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.L))
-    op4E = opcode("LD C,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.MEM_AT_HL))
-    op4F = opcode("LD C,A", 4)(lambda self: self._ld_reg_from_reg(Reg.C, Reg.A))
-
-    op50 = opcode("LD D,B", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.B))
-    op51 = opcode("LD D,C", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.C))
-    op52 = opcode("LD D,D", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.D))
-    op53 = opcode("LD D,E", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.E))
-    op54 = opcode("LD D,H", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.H))
-    op55 = opcode("LD D,L", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.L))
-    op56 = opcode("LD D,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.MEM_AT_HL))
-    op57 = opcode("LD D,A", 4)(lambda self: self._ld_reg_from_reg(Reg.D, Reg.A))
-
-    op58 = opcode("LD E,B", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.B))
-    op59 = opcode("LD E,C", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.C))
-    op5A = opcode("LD E,D", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.D))
-    op5B = opcode("LD E,E", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.E))
-    op5C = opcode("LD E,H", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.H))
-    op5D = opcode("LD E,L", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.L))
-    op5E = opcode("LD E,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.MEM_AT_HL))
-    op5F = opcode("LD E,A", 4)(lambda self: self._ld_reg_from_reg(Reg.E, Reg.A))
-
-    op60 = opcode("LD H,B", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.B))
-    op61 = opcode("LD H,C", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.C))
-    op62 = opcode("LD H,D", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.D))
-    op63 = opcode("LD H,E", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.E))
-    op64 = opcode("LD H,H", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.H))
-    op65 = opcode("LD H,L", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.L))
-    op66 = opcode("LD H,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.MEM_AT_HL))
-    op67 = opcode("LD H,A", 4)(lambda self: self._ld_reg_from_reg(Reg.H, Reg.A))
-
-    op68 = opcode("LD L,B", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.B))
-    op69 = opcode("LD L,C", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.C))
-    op6A = opcode("LD L,D", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.D))
-    op6B = opcode("LD L,E", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.E))
-    op6C = opcode("LD L,H", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.H))
-    op6D = opcode("LD L,L", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.L))
-    op6E = opcode("LD L,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.MEM_AT_HL))
-    op6F = opcode("LD L,A", 4)(lambda self: self._ld_reg_from_reg(Reg.L, Reg.A))
-
-    op70 = opcode("LD [HL],B", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.B))
-    op71 = opcode("LD [HL],C", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.C))
-    op72 = opcode("LD [HL],D", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.D))
-    op73 = opcode("LD [HL],E", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.E))
-    op74 = opcode("LD [HL],H", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.H))
-    op75 = opcode("LD [HL],L", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.L))
-    op77 = opcode("LD [HL],A", 8)(lambda self: self._ld_reg_from_reg(Reg.MEM_AT_HL, Reg.A))
-
-    op78 = opcode("LD A,B", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.B))
-    op79 = opcode("LD A,C", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.C))
-    op7A = opcode("LD A,D", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.D))
-    op7B = opcode("LD A,E", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.E))
-    op7C = opcode("LD A,H", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.H))
-    op7D = opcode("LD A,L", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.L))
-    op7E = opcode("LD A,[HL]", 8)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.MEM_AT_HL))
-    op7F = opcode("LD A,A", 4)(lambda self: self._ld_reg_from_reg(Reg.A, Reg.A))
-
-    @opcode("LD [HL],n", 12, "B")
-    def op36(self, n):
-        self.ram[self.HL] = n
+            cycles = 8 if "[HL]" in {reg_from, reg_to} else 4
+            op = 0x40 + base * 8 + offset
+            reg_to_name = reg_to.replace('[HL]', 'MEM_AT_HL')
+            reg_from_name = reg_from.replace('[HL]', 'MEM_AT_HL')
+            exec(dedent(f"""
+                @opcode("LD {reg_to},{reg_from}", {cycles})
+                def op{op:02X}(self):
+                    self.{reg_to_name} = self.{reg_from_name}
+            """))
 
     # ===================================
     # 3. LD A,n
@@ -517,7 +456,6 @@ class CPU:
     op0A = opcode("LD A,[BC]", 8)(lambda self: self._ld_val_to_a(self.ram[self.BC]))
     op1A = opcode("LD A,[DE]", 8)(lambda self: self._ld_val_to_a(self.ram[self.DE]))
     opFA = opcode("LD A,[nn]", 16, "H")(lambda self, val: self._ld_val_to_a(self.ram[val]))
-    op3E = opcode("LD A,n", 8, "B")(lambda self, val: self._ld_val_to_a(val))
 
     # ===================================
     # 4. LD [nn],A
@@ -595,6 +533,9 @@ class CPU:
     # <editor-fold description="3.3.2 16-Bit Loads">
     # ===================================
     # 1. LD n,nn
+    def _ld_val_to_reg(self, val, reg: Reg):
+        setattr(self, reg.value, val)
+
     op01 = opcode("LD BC,nn", 12, "H")(lambda self, val: self._ld_val_to_reg(val, Reg.BC))
     op11 = opcode("LD DE,nn", 12, "H")(lambda self, val: self._ld_val_to_reg(val, Reg.DE))
     op21 = opcode("LD HL,nn", 12, "H")(lambda self, val: self._ld_val_to_reg(val, Reg.HL))
@@ -602,7 +543,10 @@ class CPU:
 
     # ===================================
     # 2. LD SP,HL
-    opF9 = opcode("LD SP,HL", 8)(lambda self: self._ld_reg_from_reg(Reg.SP, Reg.HL))
+
+    @opcode("LD SP,HL", 8)
+    def opF9(self):
+        self.SP = self.HL
 
     # ===================================
     # 3. LD HL,SP+n
@@ -623,6 +567,21 @@ class CPU:
 
     # ===================================
     # 6. PUSH nn
+    def _push16(self, reg: Reg):
+        """
+        >>> c = CPU()
+        >>> c.B = 1234
+        >>> c._push16(Reg.B)
+        >>> c._pop16(Reg.A)
+        >>> c.A
+        1234
+        """
+        val = getattr(self, reg.value)
+        self.ram[self.SP - 1] = (val & 0xFF00) >> 8
+        self.ram[self.SP] = val & 0xFF
+        self.SP -= 2
+        # print("Pushing %r to stack at %r [%r]" % (val, self.SP, self.ram[-10:]))
+
     opF5 = opcode("PUSH AF", 16)(lambda self: self._push16(Reg.AF))
     opC5 = opcode("PUSH BC", 16)(lambda self: self._push16(Reg.BC))
     opD5 = opcode("PUSH DE", 16)(lambda self: self._push16(Reg.DE))
@@ -630,6 +589,12 @@ class CPU:
 
     # ===================================
     # 6. POP nn
+    def _pop16(self, reg: Reg):
+        val = (self.ram[self.SP+1] << 8) | self.ram[self.SP+2]
+        # print("Set %r to %r from %r, %r" % (reg, val, self.SP, self.ram[-10:]))
+        setattr(self, reg.value, val)
+        self.SP += 2
+
     opF1 = opcode("POP AF", 12)(lambda self: self._pop16(Reg.AF))
     opC1 = opcode("POP BC", 12)(lambda self: self._pop16(Reg.BC))
     opD1 = opcode("POP DE", 12)(lambda self: self._pop16(Reg.DE))
@@ -649,7 +614,6 @@ class CPU:
         self.FLAG_H = None  # FIXME: Set if carry from bit 3
         self.FLAG_C = None  # FIXME: Set if carry from bit 7
 
-    op87 = opcode("ADD A,A", 4)(lambda self: self._add(self.A))
     op80 = opcode("ADD A,B", 4)(lambda self: self._add(self.B))
     op81 = opcode("ADD A,C", 4)(lambda self: self._add(self.C))
     op82 = opcode("ADD A,D", 4)(lambda self: self._add(self.D))
@@ -657,6 +621,8 @@ class CPU:
     op84 = opcode("ADD A,H", 4)(lambda self: self._add(self.H))
     op85 = opcode("ADD A,L", 4)(lambda self: self._add(self.L))
     op86 = opcode("ADD A,[HL]", 8)(lambda self: self._add(self.MEM_AT_HL))
+    op87 = opcode("ADD A,A", 4)(lambda self: self._add(self.A))
+
     opC6 = opcode("ADD A,n", 8, "B")(lambda self, val: self._add(val))
 
     # ===================================
@@ -669,7 +635,6 @@ class CPU:
         self.FLAG_H = None  # FIXME: Set if carry from bit 3
         self.FLAG_C = None  # FIXME: Set if carry from bit 7
 
-    op8F = opcode("ADC A,A", 4)(lambda self: self._adc(self.A))
     op88 = opcode("ADC A,B", 4)(lambda self: self._adc(self.B))
     op89 = opcode("ADC A,C", 4)(lambda self: self._adc(self.C))
     op8A = opcode("ADC A,D", 4)(lambda self: self._adc(self.D))
@@ -677,6 +642,8 @@ class CPU:
     op8C = opcode("ADC A,H", 4)(lambda self: self._adc(self.H))
     op8D = opcode("ADC A,L", 4)(lambda self: self._adc(self.L))
     op8E = opcode("ADC A,[HL]", 8)(lambda self: self._adc(self.MEM_AT_HL))
+    op8F = opcode("ADC A,A", 4)(lambda self: self._adc(self.A))
+
     opCE = opcode("ADC A,n", 8, "B")(lambda self, val: self._adc(val))
 
     # ===================================
@@ -689,7 +656,6 @@ class CPU:
         self.FLAG_N = True
         self.FLAG_H = None  # FIXME: Set if borrow from bit 4
 
-    op97 = opcode("SUB A,A", 4)(lambda self: self._sub(self.A))
     op90 = opcode("SUB A,B", 4)(lambda self: self._sub(self.B))
     op91 = opcode("SUB A,C", 4)(lambda self: self._sub(self.C))
     op92 = opcode("SUB A,D", 4)(lambda self: self._sub(self.D))
@@ -697,6 +663,8 @@ class CPU:
     op94 = opcode("SUB A,H", 4)(lambda self: self._sub(self.H))
     op95 = opcode("SUB A,L", 4)(lambda self: self._sub(self.L))
     op96 = opcode("SUB A,[HL]", 8)(lambda self: self._sub(self.MEM_AT_HL))
+    op97 = opcode("SUB A,A", 4)(lambda self: self._sub(self.A))
+
     opD6 = opcode("SUB A,n", 8, "B")(lambda self, val: self._sub(val))
 
     # ===================================
@@ -709,7 +677,6 @@ class CPU:
         self.FLAG_H = None  # FIXME: Set if no borrow from bit 4
         self.FLAG_C = None  # FIXME: Set if no borrow
 
-    op9F = opcode("SBC A,A", 4)(lambda self: self._sbc(self.A))
     op98 = opcode("SBC A,B", 4)(lambda self: self._sbc(self.B))
     op99 = opcode("SBC A,C", 4)(lambda self: self._sbc(self.C))
     op9A = opcode("SBC A,D", 4)(lambda self: self._sbc(self.D))
@@ -717,6 +684,8 @@ class CPU:
     op9C = opcode("SBC A,H", 4)(lambda self: self._sbc(self.H))
     op9D = opcode("SBC A,L", 4)(lambda self: self._sbc(self.L))
     op9E = opcode("SBC A,[HL]", 8)(lambda self: self._sbc(self.MEM_AT_HL))
+    op9F = opcode("SBC A,A", 4)(lambda self: self._sbc(self.A))
+
     opDE = opcode("SBC A,n", 8, "B")(lambda self, val: self._sbc(val))
 
     # ===================================
@@ -728,7 +697,6 @@ class CPU:
         self.FLAG_H = True
         self.FLAG_C = False
 
-    opA7 = opcode("AND A", 4)(lambda self: self._and(self.A))
     opA0 = opcode("AND B", 4)(lambda self: self._and(self.B))
     opA1 = opcode("AND C", 4)(lambda self: self._and(self.C))
     opA2 = opcode("AND D", 4)(lambda self: self._and(self.D))
@@ -736,6 +704,8 @@ class CPU:
     opA4 = opcode("AND H", 4)(lambda self: self._and(self.H))
     opA5 = opcode("AND L", 4)(lambda self: self._and(self.L))
     opA6 = opcode("AND [HL]", 8)(lambda self: self._and(self.MEM_AT_HL))
+    opA7 = opcode("AND A", 4)(lambda self: self._and(self.A))
+
     opE6 = opcode("AND n", 8, "B")(lambda self, n: self._and(self.ram[n]))
 
     # ===================================
@@ -747,7 +717,6 @@ class CPU:
         self.FLAG_H = False
         self.FLAG_C = False
 
-    opB7 = opcode("OR A", 4)(lambda self: self._or(self.A))
     opB0 = opcode("OR B", 4)(lambda self: self._or(self.B))
     opB1 = opcode("OR C", 4)(lambda self: self._or(self.C))
     opB2 = opcode("OR D", 4)(lambda self: self._or(self.D))
@@ -755,6 +724,8 @@ class CPU:
     opB4 = opcode("OR H", 4)(lambda self: self._or(self.H))
     opB5 = opcode("OR L", 4)(lambda self: self._or(self.L))
     opB6 = opcode("OR [HL]", 8)(lambda self: self._or(self.MEM_AT_HL))
+    opB7 = opcode("OR A", 4)(lambda self: self._or(self.A))
+
     opF6 = opcode("OR n", 8, "B")(lambda self, n: self._or(self.ram[n]))
 
     # ===================================
@@ -777,7 +748,6 @@ class CPU:
         self.FLAG_H = False
         self.FLAG_C = False
 
-    opAF = opcode("XOR A", 4)(lambda self: self._xor(self.A))
     opA8 = opcode("XOR B", 4)(lambda self: self._xor(self.B))
     opA9 = opcode("XOR C", 4)(lambda self: self._xor(self.C))
     opAA = opcode("XOR D", 4)(lambda self: self._xor(self.D))
@@ -785,6 +755,8 @@ class CPU:
     opAC = opcode("XOR H", 4)(lambda self: self._xor(self.H))
     opAD = opcode("XOR L", 4)(lambda self: self._xor(self.L))
     opAE = opcode("XOR [HL]", 8)(lambda self: self._xor(self.MEM_AT_HL))
+    opAF = opcode("XOR A", 4)(lambda self: self._xor(self.A))
+
     opEE = opcode("XOR n", 8, "B")(lambda self, n: self._xor(self.ram[n]))
 
     # ===================================
@@ -796,7 +768,6 @@ class CPU:
         self.FLAG_H = None  # FIXME: Set if no borrow from bit 4
         self.FLAG_C = self.A < n
 
-    opBF = opcode("CP A", 4)(lambda self: self._cp(self.A))
     opB8 = opcode("CP B", 4)(lambda self: self._cp(self.B))
     opB9 = opcode("CP C", 4)(lambda self: self._cp(self.C))
     opBA = opcode("CP D", 4)(lambda self: self._cp(self.D))
@@ -804,6 +775,8 @@ class CPU:
     opBC = opcode("CP H", 4)(lambda self: self._cp(self.H))
     opBD = opcode("CP L", 4)(lambda self: self._cp(self.L))
     opBE = opcode("CP [HL]", 8)(lambda self: self._cp(self.MEM_AT_HL))
+    opBF = opcode("CP A", 4)(lambda self: self._cp(self.A))
+
     opFE = opcode("CP n", 8, "B")(lambda self, val: self._cp(val))
 
     # ===================================
@@ -816,7 +789,6 @@ class CPU:
         self.FLAG_N = False
         self.FLAG_H = None  # FIXME: "Set if carry from bit 3"
 
-    op3C = opcode("INC A", 4)(lambda self: self._inc8("A"))
     op04 = opcode("INC B", 4)(lambda self: self._inc8("B"))
     op0C = opcode("INC C", 4)(lambda self: self._inc8("C"))
     op14 = opcode("INC D", 4)(lambda self: self._inc8("D"))
@@ -824,6 +796,7 @@ class CPU:
     op24 = opcode("INC H", 4)(lambda self: self._inc8("H"))
     op2C = opcode("INC L", 4)(lambda self: self._inc8("L"))
     op34 = opcode("INC [HL]", 12)(lambda self: self._inc8("MEM_AT_HL"))
+    op3C = opcode("INC A", 4)(lambda self: self._inc8("A"))
 
     # ===================================
     # 10. DEC
@@ -835,7 +808,6 @@ class CPU:
         self.FLAG_N = True
         self.FLAG_H = None  # FIXME: "Set if no borrow from bit 4"
 
-    op3D = opcode("DEC A", 4)(lambda self: self._dec8("A"))
     op05 = opcode("DEC B", 4)(lambda self: self._dec8("B"))
     op0D = opcode("DEC C", 4)(lambda self: self._dec8("C"))
     op15 = opcode("DEC D", 4)(lambda self: self._dec8("D"))
@@ -843,6 +815,7 @@ class CPU:
     op25 = opcode("DEC H", 4)(lambda self: self._dec8("H"))
     op2D = opcode("DEC L", 4)(lambda self: self._dec8("L"))
     op35 = opcode("DEC [HL]", 12)(lambda self: self._dec8("MEM_AT_HL"))
+    op3D = opcode("DEC A", 4)(lambda self: self._dec8("A"))
     # </editor-fold>
 
     # <editor-fold description="3.3.4 16-Bit Arithmetic">
@@ -1013,6 +986,17 @@ class CPU:
     # </editor-fold>
 
     # <editor-fold description="3.3.6 Rotates & Shifts">
+    for base, ins in enumerate(["RLC", "RRC", "RL", "RR", "SLA", "SRA", "SWAP", "SRL"]):
+        for offset, arg in enumerate(GEN_REGS):
+            op = (base * 8) + offset
+            time = 16 if arg == "[HL]" else 8
+            arg = arg.replace("[HL]", "MEM_AT_HL")
+            exec(dedent(f"""
+                @opcode("{ins} {arg}", {time})
+                def opCB{op:02X}(self):
+                    self._{ins.lower()}(Reg.{arg})
+            """))
+
     # ===================================
     # 1. RCLA
     @opcode("RCLA", 4)
@@ -1181,320 +1165,42 @@ class CPU:
     # <editor-fold description="3.3.7 Bit Opcodes">
     # ===================================
     # 1. BIT b,r
-    def _bit(self, reg: Reg, bit):
-        """
-        >>> c = CPU()
-        >>> c.A = 0b00010000
-        >>> c._bit(Reg.A, 4)
-        >>> c.FLAG_Z
-        True
-        >>> c._bit(Reg.A, 3)
-        >>> c.FLAG_Z
-        False
-        """
-        self.FLAG_Z = bool(getattr(self, reg.value) & (0x1 << bit))
-        self.FLAG_N = False
-        self.FLAG_H = True
-
-    # ===================================
     # 2. SET b,r
-    def _set(self, reg: Reg, bit):
-        """
-        >>> c = CPU()
-        >>> c.A = 0b10010000
-        >>> c._set(Reg.A, 2)
-        >>> bin(c.A)
-        '0b10010100'
-        """
-        setattr(self, reg.value, getattr(self, reg.value) | (0x01 << bit))
-
-    # ===================================
     # 3. RES b,r
-    def _res(self, reg: Reg, bit):
-        """
-        >>> c = CPU()
-        >>> c.A = 0b10010000
-        >>> c._res(Reg.A, 4)
-        >>> bin(c.A)
-        '0b10000000'
-        """
-        setattr(self, reg.value, getattr(self, reg.value) & ((0x01 << bit) ^ 0xFF))
-
-    _ext_gen = """
-for offset, op in enumerate(["RLC", "RRC", "RL", "RR", "SLA", "SRA", "SWAP", "SRL"]):
-    for code, arg in enumerate(["B", "C", "D", "E", "H", "L", "[HL]", "A"]):
-        opcode = (offset * 8) + code
-        time = 16 if arg == "[HL]" else 8
-        print(
-            "opCB%02X = opcode(\"%s %s\", %d)(lambda self: self._%s(Reg.%s))" %
-            (opcode, op, arg, time, op.lower(), arg.replace("[HL]", "MEM_AT_HL")))
-
-for offset, op in enumerate(["BIT", "RES", "SET"]):
     for b in range(8):
-        for code, arg in enumerate(["B", "C", "D", "E", "H", "L", "[HL]", "A"]):
-            opcode = 0x40 + (offset * 0x40) + b * 0x08 + code
+        for offset, arg in enumerate(GEN_REGS):
+            op = 0x40 + b * 0x08 + offset
             time = 16 if arg == "[HL]" else 8
-            print(
-                "opCB%02X = opcode(\"%s %d %s\", %d)(lambda self: self._%s(Reg.%s, %d))" %
-                (opcode, op, b, arg, time, op.lower(), arg.replace("[HL]", "MEM_AT_HL"), b))
-"""
+            arg = arg.replace("[HL]", "MEM_AT_HL")
+            exec(dedent(f"""
+                @opcode("BIT {b},{arg}", {time})
+                def opCB{op:02X}(self):
+                    self.FLAG_Z = bool(self.{arg} & (0x01 << {b}))
+                    self.FLAG_N = False
+                    self.FLAG_H = True
+            """))
 
-    opCB00 = opcode("RLC B", 8)(lambda self: self._rlc(Reg.B))
-    opCB01 = opcode("RLC C", 8)(lambda self: self._rlc(Reg.C))
-    opCB02 = opcode("RLC D", 8)(lambda self: self._rlc(Reg.D))
-    opCB03 = opcode("RLC E", 8)(lambda self: self._rlc(Reg.E))
-    opCB04 = opcode("RLC H", 8)(lambda self: self._rlc(Reg.H))
-    opCB05 = opcode("RLC L", 8)(lambda self: self._rlc(Reg.L))
-    opCB06 = opcode("RLC [HL]", 16)(lambda self: self._rlc(Reg.MEM_AT_HL))
-    opCB07 = opcode("RLC A", 8)(lambda self: self._rlc(Reg.A))
-    opCB08 = opcode("RRC B", 8)(lambda self: self._rrc(Reg.B))
-    opCB09 = opcode("RRC C", 8)(lambda self: self._rrc(Reg.C))
-    opCB0A = opcode("RRC D", 8)(lambda self: self._rrc(Reg.D))
-    opCB0B = opcode("RRC E", 8)(lambda self: self._rrc(Reg.E))
-    opCB0C = opcode("RRC H", 8)(lambda self: self._rrc(Reg.H))
-    opCB0D = opcode("RRC L", 8)(lambda self: self._rrc(Reg.L))
-    opCB0E = opcode("RRC [HL]", 16)(lambda self: self._rrc(Reg.MEM_AT_HL))
-    opCB0F = opcode("RRC A", 8)(lambda self: self._rrc(Reg.A))
-    opCB10 = opcode("RL B", 8)(lambda self: self._rl(Reg.B))
-    opCB11 = opcode("RL C", 8)(lambda self: self._rl(Reg.C))
-    opCB12 = opcode("RL D", 8)(lambda self: self._rl(Reg.D))
-    opCB13 = opcode("RL E", 8)(lambda self: self._rl(Reg.E))
-    opCB14 = opcode("RL H", 8)(lambda self: self._rl(Reg.H))
-    opCB15 = opcode("RL L", 8)(lambda self: self._rl(Reg.L))
-    opCB16 = opcode("RL [HL]", 16)(lambda self: self._rl(Reg.MEM_AT_HL))
-    opCB17 = opcode("RL A", 8)(lambda self: self._rl(Reg.A))
-    opCB18 = opcode("RR B", 8)(lambda self: self._rr(Reg.B))
-    opCB19 = opcode("RR C", 8)(lambda self: self._rr(Reg.C))
-    opCB1A = opcode("RR D", 8)(lambda self: self._rr(Reg.D))
-    opCB1B = opcode("RR E", 8)(lambda self: self._rr(Reg.E))
-    opCB1C = opcode("RR H", 8)(lambda self: self._rr(Reg.H))
-    opCB1D = opcode("RR L", 8)(lambda self: self._rr(Reg.L))
-    opCB1E = opcode("RR [HL]", 16)(lambda self: self._rr(Reg.MEM_AT_HL))
-    opCB1F = opcode("RR A", 8)(lambda self: self._rr(Reg.A))
-    opCB20 = opcode("SLA B", 8)(lambda self: self._sla(Reg.B))
-    opCB21 = opcode("SLA C", 8)(lambda self: self._sla(Reg.C))
-    opCB22 = opcode("SLA D", 8)(lambda self: self._sla(Reg.D))
-    opCB23 = opcode("SLA E", 8)(lambda self: self._sla(Reg.E))
-    opCB24 = opcode("SLA H", 8)(lambda self: self._sla(Reg.H))
-    opCB25 = opcode("SLA L", 8)(lambda self: self._sla(Reg.L))
-    opCB26 = opcode("SLA [HL]", 16)(lambda self: self._sla(Reg.MEM_AT_HL))
-    opCB27 = opcode("SLA A", 8)(lambda self: self._sla(Reg.A))
-    opCB28 = opcode("SRA B", 8)(lambda self: self._sra(Reg.B))
-    opCB29 = opcode("SRA C", 8)(lambda self: self._sra(Reg.C))
-    opCB2A = opcode("SRA D", 8)(lambda self: self._sra(Reg.D))
-    opCB2B = opcode("SRA E", 8)(lambda self: self._sra(Reg.E))
-    opCB2C = opcode("SRA H", 8)(lambda self: self._sra(Reg.H))
-    opCB2D = opcode("SRA L", 8)(lambda self: self._sra(Reg.L))
-    opCB2E = opcode("SRA [HL]", 16)(lambda self: self._sra(Reg.MEM_AT_HL))
-    opCB2F = opcode("SRA A", 8)(lambda self: self._sra(Reg.A))
-    opCB30 = opcode("SWAP B", 8)(lambda self: self._swap(Reg.B))
-    opCB31 = opcode("SWAP C", 8)(lambda self: self._swap(Reg.C))
-    opCB32 = opcode("SWAP D", 8)(lambda self: self._swap(Reg.D))
-    opCB33 = opcode("SWAP E", 8)(lambda self: self._swap(Reg.E))
-    opCB34 = opcode("SWAP H", 8)(lambda self: self._swap(Reg.H))
-    opCB35 = opcode("SWAP L", 8)(lambda self: self._swap(Reg.L))
-    opCB36 = opcode("SWAP [HL]", 16)(lambda self: self._swap(Reg.MEM_AT_HL))
-    opCB37 = opcode("SWAP A", 8)(lambda self: self._swap(Reg.A))
-    opCB38 = opcode("SRL B", 8)(lambda self: self._srl(Reg.B))
-    opCB39 = opcode("SRL C", 8)(lambda self: self._srl(Reg.C))
-    opCB3A = opcode("SRL D", 8)(lambda self: self._srl(Reg.D))
-    opCB3B = opcode("SRL E", 8)(lambda self: self._srl(Reg.E))
-    opCB3C = opcode("SRL H", 8)(lambda self: self._srl(Reg.H))
-    opCB3D = opcode("SRL L", 8)(lambda self: self._srl(Reg.L))
-    opCB3E = opcode("SRL [HL]", 16)(lambda self: self._srl(Reg.MEM_AT_HL))
-    opCB3F = opcode("SRL A", 8)(lambda self: self._srl(Reg.A))
-    opCB40 = opcode("BIT 0,B", 8)(lambda self: self._bit(Reg.B, 0))
-    opCB41 = opcode("BIT 0,C", 8)(lambda self: self._bit(Reg.C, 0))
-    opCB42 = opcode("BIT 0,D", 8)(lambda self: self._bit(Reg.D, 0))
-    opCB43 = opcode("BIT 0,E", 8)(lambda self: self._bit(Reg.E, 0))
-    opCB44 = opcode("BIT 0,H", 8)(lambda self: self._bit(Reg.H, 0))
-    opCB45 = opcode("BIT 0,L", 8)(lambda self: self._bit(Reg.L, 0))
-    opCB46 = opcode("BIT 0,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 0))
-    opCB47 = opcode("BIT 0,A", 8)(lambda self: self._bit(Reg.A, 0))
-    opCB48 = opcode("BIT 1,B", 8)(lambda self: self._bit(Reg.B, 1))
-    opCB49 = opcode("BIT 1,C", 8)(lambda self: self._bit(Reg.C, 1))
-    opCB4A = opcode("BIT 1,D", 8)(lambda self: self._bit(Reg.D, 1))
-    opCB4B = opcode("BIT 1,E", 8)(lambda self: self._bit(Reg.E, 1))
-    opCB4C = opcode("BIT 1,H", 8)(lambda self: self._bit(Reg.H, 1))
-    opCB4D = opcode("BIT 1,L", 8)(lambda self: self._bit(Reg.L, 1))
-    opCB4E = opcode("BIT 1,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 1))
-    opCB4F = opcode("BIT 1,A", 8)(lambda self: self._bit(Reg.A, 1))
-    opCB50 = opcode("BIT 2,B", 8)(lambda self: self._bit(Reg.B, 2))
-    opCB51 = opcode("BIT 2,C", 8)(lambda self: self._bit(Reg.C, 2))
-    opCB52 = opcode("BIT 2,D", 8)(lambda self: self._bit(Reg.D, 2))
-    opCB53 = opcode("BIT 2,E", 8)(lambda self: self._bit(Reg.E, 2))
-    opCB54 = opcode("BIT 2,H", 8)(lambda self: self._bit(Reg.H, 2))
-    opCB55 = opcode("BIT 2,L", 8)(lambda self: self._bit(Reg.L, 2))
-    opCB56 = opcode("BIT 2,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 2))
-    opCB57 = opcode("BIT 2,A", 8)(lambda self: self._bit(Reg.A, 2))
-    opCB58 = opcode("BIT 3,B", 8)(lambda self: self._bit(Reg.B, 3))
-    opCB59 = opcode("BIT 3,C", 8)(lambda self: self._bit(Reg.C, 3))
-    opCB5A = opcode("BIT 3,D", 8)(lambda self: self._bit(Reg.D, 3))
-    opCB5B = opcode("BIT 3,E", 8)(lambda self: self._bit(Reg.E, 3))
-    opCB5C = opcode("BIT 3,H", 8)(lambda self: self._bit(Reg.H, 3))
-    opCB5D = opcode("BIT 3,L", 8)(lambda self: self._bit(Reg.L, 3))
-    opCB5E = opcode("BIT 3,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 3))
-    opCB5F = opcode("BIT 3,A", 8)(lambda self: self._bit(Reg.A, 3))
-    opCB60 = opcode("BIT 4,B", 8)(lambda self: self._bit(Reg.B, 4))
-    opCB61 = opcode("BIT 4,C", 8)(lambda self: self._bit(Reg.C, 4))
-    opCB62 = opcode("BIT 4,D", 8)(lambda self: self._bit(Reg.D, 4))
-    opCB63 = opcode("BIT 4,E", 8)(lambda self: self._bit(Reg.E, 4))
-    opCB64 = opcode("BIT 4,H", 8)(lambda self: self._bit(Reg.H, 4))
-    opCB65 = opcode("BIT 4,L", 8)(lambda self: self._bit(Reg.L, 4))
-    opCB66 = opcode("BIT 4,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 4))
-    opCB67 = opcode("BIT 4,A", 8)(lambda self: self._bit(Reg.A, 4))
-    opCB68 = opcode("BIT 5,B", 8)(lambda self: self._bit(Reg.B, 5))
-    opCB69 = opcode("BIT 5,C", 8)(lambda self: self._bit(Reg.C, 5))
-    opCB6A = opcode("BIT 5,D", 8)(lambda self: self._bit(Reg.D, 5))
-    opCB6B = opcode("BIT 5,E", 8)(lambda self: self._bit(Reg.E, 5))
-    opCB6C = opcode("BIT 5,H", 8)(lambda self: self._bit(Reg.H, 5))
-    opCB6D = opcode("BIT 5,L", 8)(lambda self: self._bit(Reg.L, 5))
-    opCB6E = opcode("BIT 5,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 5))
-    opCB6F = opcode("BIT 5,A", 8)(lambda self: self._bit(Reg.A, 5))
-    opCB70 = opcode("BIT 6,B", 8)(lambda self: self._bit(Reg.B, 6))
-    opCB71 = opcode("BIT 6,C", 8)(lambda self: self._bit(Reg.C, 6))
-    opCB72 = opcode("BIT 6,D", 8)(lambda self: self._bit(Reg.D, 6))
-    opCB73 = opcode("BIT 6,E", 8)(lambda self: self._bit(Reg.E, 6))
-    opCB74 = opcode("BIT 6,H", 8)(lambda self: self._bit(Reg.H, 6))
-    opCB75 = opcode("BIT 6,L", 8)(lambda self: self._bit(Reg.L, 6))
-    opCB76 = opcode("BIT 6,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 6))
-    opCB77 = opcode("BIT 6,A", 8)(lambda self: self._bit(Reg.A, 6))
-    opCB78 = opcode("BIT 7,B", 8)(lambda self: self._bit(Reg.B, 7))
-    opCB79 = opcode("BIT 7,C", 8)(lambda self: self._bit(Reg.C, 7))
-    opCB7A = opcode("BIT 7,D", 8)(lambda self: self._bit(Reg.D, 7))
-    opCB7B = opcode("BIT 7,E", 8)(lambda self: self._bit(Reg.E, 7))
-    opCB7C = opcode("BIT 7,H", 8)(lambda self: self._bit(Reg.H, 7))
-    opCB7D = opcode("BIT 7,L", 8)(lambda self: self._bit(Reg.L, 7))
-    opCB7E = opcode("BIT 7,[HL]", 12)(lambda self: self._bit(Reg.MEM_AT_HL, 7))
-    opCB7F = opcode("BIT 7,A", 8)(lambda self: self._bit(Reg.A, 7))
-    opCB80 = opcode("RES 0,B", 8)(lambda self: self._res(Reg.B, 0))
-    opCB81 = opcode("RES 0,C", 8)(lambda self: self._res(Reg.C, 0))
-    opCB82 = opcode("RES 0,D", 8)(lambda self: self._res(Reg.D, 0))
-    opCB83 = opcode("RES 0,E", 8)(lambda self: self._res(Reg.E, 0))
-    opCB84 = opcode("RES 0,H", 8)(lambda self: self._res(Reg.H, 0))
-    opCB85 = opcode("RES 0,L", 8)(lambda self: self._res(Reg.L, 0))
-    opCB86 = opcode("RES 0,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 0))
-    opCB87 = opcode("RES 0,A", 8)(lambda self: self._res(Reg.A, 0))
-    opCB88 = opcode("RES 1,B", 8)(lambda self: self._res(Reg.B, 1))
-    opCB89 = opcode("RES 1,C", 8)(lambda self: self._res(Reg.C, 1))
-    opCB8A = opcode("RES 1,D", 8)(lambda self: self._res(Reg.D, 1))
-    opCB8B = opcode("RES 1,E", 8)(lambda self: self._res(Reg.E, 1))
-    opCB8C = opcode("RES 1,H", 8)(lambda self: self._res(Reg.H, 1))
-    opCB8D = opcode("RES 1,L", 8)(lambda self: self._res(Reg.L, 1))
-    opCB8E = opcode("RES 1,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 1))
-    opCB8F = opcode("RES 1,A", 8)(lambda self: self._res(Reg.A, 1))
-    opCB90 = opcode("RES 2,B", 8)(lambda self: self._res(Reg.B, 2))
-    opCB91 = opcode("RES 2,C", 8)(lambda self: self._res(Reg.C, 2))
-    opCB92 = opcode("RES 2,D", 8)(lambda self: self._res(Reg.D, 2))
-    opCB93 = opcode("RES 2,E", 8)(lambda self: self._res(Reg.E, 2))
-    opCB94 = opcode("RES 2,H", 8)(lambda self: self._res(Reg.H, 2))
-    opCB95 = opcode("RES 2,L", 8)(lambda self: self._res(Reg.L, 2))
-    opCB96 = opcode("RES 2,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 2))
-    opCB97 = opcode("RES 2,A", 8)(lambda self: self._res(Reg.A, 2))
-    opCB98 = opcode("RES 3,B", 8)(lambda self: self._res(Reg.B, 3))
-    opCB99 = opcode("RES 3,C", 8)(lambda self: self._res(Reg.C, 3))
-    opCB9A = opcode("RES 3,D", 8)(lambda self: self._res(Reg.D, 3))
-    opCB9B = opcode("RES 3,E", 8)(lambda self: self._res(Reg.E, 3))
-    opCB9C = opcode("RES 3,H", 8)(lambda self: self._res(Reg.H, 3))
-    opCB9D = opcode("RES 3,L", 8)(lambda self: self._res(Reg.L, 3))
-    opCB9E = opcode("RES 3,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 3))
-    opCB9F = opcode("RES 3,A", 8)(lambda self: self._res(Reg.A, 3))
-    opCBA0 = opcode("RES 4,B", 8)(lambda self: self._res(Reg.B, 4))
-    opCBA1 = opcode("RES 4,C", 8)(lambda self: self._res(Reg.C, 4))
-    opCBA2 = opcode("RES 4,D", 8)(lambda self: self._res(Reg.D, 4))
-    opCBA3 = opcode("RES 4,E", 8)(lambda self: self._res(Reg.E, 4))
-    opCBA4 = opcode("RES 4,H", 8)(lambda self: self._res(Reg.H, 4))
-    opCBA5 = opcode("RES 4,L", 8)(lambda self: self._res(Reg.L, 4))
-    opCBA6 = opcode("RES 4,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 4))
-    opCBA7 = opcode("RES 4,A", 8)(lambda self: self._res(Reg.A, 4))
-    opCBA8 = opcode("RES 5,B", 8)(lambda self: self._res(Reg.B, 5))
-    opCBA9 = opcode("RES 5,C", 8)(lambda self: self._res(Reg.C, 5))
-    opCBAA = opcode("RES 5,D", 8)(lambda self: self._res(Reg.D, 5))
-    opCBAB = opcode("RES 5,E", 8)(lambda self: self._res(Reg.E, 5))
-    opCBAC = opcode("RES 5,H", 8)(lambda self: self._res(Reg.H, 5))
-    opCBAD = opcode("RES 5,L", 8)(lambda self: self._res(Reg.L, 5))
-    opCBAE = opcode("RES 5,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 5))
-    opCBAF = opcode("RES 5,A", 8)(lambda self: self._res(Reg.A, 5))
-    opCBB0 = opcode("RES 6,B", 8)(lambda self: self._res(Reg.B, 6))
-    opCBB1 = opcode("RES 6,C", 8)(lambda self: self._res(Reg.C, 6))
-    opCBB2 = opcode("RES 6,D", 8)(lambda self: self._res(Reg.D, 6))
-    opCBB3 = opcode("RES 6,E", 8)(lambda self: self._res(Reg.E, 6))
-    opCBB4 = opcode("RES 6,H", 8)(lambda self: self._res(Reg.H, 6))
-    opCBB5 = opcode("RES 6,L", 8)(lambda self: self._res(Reg.L, 6))
-    opCBB6 = opcode("RES 6,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 6))
-    opCBB7 = opcode("RES 6,A", 8)(lambda self: self._res(Reg.A, 6))
-    opCBB8 = opcode("RES 7,B", 8)(lambda self: self._res(Reg.B, 7))
-    opCBB9 = opcode("RES 7,C", 8)(lambda self: self._res(Reg.C, 7))
-    opCBBA = opcode("RES 7,D", 8)(lambda self: self._res(Reg.D, 7))
-    opCBBB = opcode("RES 7,E", 8)(lambda self: self._res(Reg.E, 7))
-    opCBBC = opcode("RES 7,H", 8)(lambda self: self._res(Reg.H, 7))
-    opCBBD = opcode("RES 7,L", 8)(lambda self: self._res(Reg.L, 7))
-    opCBBE = opcode("RES 7,[HL]", 16)(lambda self: self._res(Reg.MEM_AT_HL, 7))
-    opCBBF = opcode("RES 7,A", 8)(lambda self: self._res(Reg.A, 7))
-    opCBC0 = opcode("SET 0,B", 8)(lambda self: self._set(Reg.B, 0))
-    opCBC1 = opcode("SET 0,C", 8)(lambda self: self._set(Reg.C, 0))
-    opCBC2 = opcode("SET 0,D", 8)(lambda self: self._set(Reg.D, 0))
-    opCBC3 = opcode("SET 0,E", 8)(lambda self: self._set(Reg.E, 0))
-    opCBC4 = opcode("SET 0,H", 8)(lambda self: self._set(Reg.H, 0))
-    opCBC5 = opcode("SET 0,L", 8)(lambda self: self._set(Reg.L, 0))
-    opCBC6 = opcode("SET 0,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 0))
-    opCBC7 = opcode("SET 0,A", 8)(lambda self: self._set(Reg.A, 0))
-    opCBC8 = opcode("SET 1,B", 8)(lambda self: self._set(Reg.B, 1))
-    opCBC9 = opcode("SET 1,C", 8)(lambda self: self._set(Reg.C, 1))
-    opCBCA = opcode("SET 1,D", 8)(lambda self: self._set(Reg.D, 1))
-    opCBCB = opcode("SET 1,E", 8)(lambda self: self._set(Reg.E, 1))
-    opCBCC = opcode("SET 1,H", 8)(lambda self: self._set(Reg.H, 1))
-    opCBCD = opcode("SET 1,L", 8)(lambda self: self._set(Reg.L, 1))
-    opCBCE = opcode("SET 1,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 1))
-    opCBCF = opcode("SET 1,A", 8)(lambda self: self._set(Reg.A, 1))
-    opCBD0 = opcode("SET 2,B", 8)(lambda self: self._set(Reg.B, 2))
-    opCBD1 = opcode("SET 2,C", 8)(lambda self: self._set(Reg.C, 2))
-    opCBD2 = opcode("SET 2,D", 8)(lambda self: self._set(Reg.D, 2))
-    opCBD3 = opcode("SET 2,E", 8)(lambda self: self._set(Reg.E, 2))
-    opCBD4 = opcode("SET 2,H", 8)(lambda self: self._set(Reg.H, 2))
-    opCBD5 = opcode("SET 2,L", 8)(lambda self: self._set(Reg.L, 2))
-    opCBD6 = opcode("SET 2,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 2))
-    opCBD7 = opcode("SET 2,A", 8)(lambda self: self._set(Reg.A, 2))
-    opCBD8 = opcode("SET 3,B", 8)(lambda self: self._set(Reg.B, 3))
-    opCBD9 = opcode("SET 3,C", 8)(lambda self: self._set(Reg.C, 3))
-    opCBDA = opcode("SET 3,D", 8)(lambda self: self._set(Reg.D, 3))
-    opCBDB = opcode("SET 3,E", 8)(lambda self: self._set(Reg.E, 3))
-    opCBDC = opcode("SET 3,H", 8)(lambda self: self._set(Reg.H, 3))
-    opCBDD = opcode("SET 3,L", 8)(lambda self: self._set(Reg.L, 3))
-    opCBDE = opcode("SET 3,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 3))
-    opCBDF = opcode("SET 3,A", 8)(lambda self: self._set(Reg.A, 3))
-    opCBE0 = opcode("SET 4,B", 8)(lambda self: self._set(Reg.B, 4))
-    opCBE1 = opcode("SET 4,C", 8)(lambda self: self._set(Reg.C, 4))
-    opCBE2 = opcode("SET 4,D", 8)(lambda self: self._set(Reg.D, 4))
-    opCBE3 = opcode("SET 4,E", 8)(lambda self: self._set(Reg.E, 4))
-    opCBE4 = opcode("SET 4,H", 8)(lambda self: self._set(Reg.H, 4))
-    opCBE5 = opcode("SET 4,L", 8)(lambda self: self._set(Reg.L, 4))
-    opCBE6 = opcode("SET 4,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 4))
-    opCBE7 = opcode("SET 4,A", 8)(lambda self: self._set(Reg.A, 4))
-    opCBE8 = opcode("SET 5,B", 8)(lambda self: self._set(Reg.B, 5))
-    opCBE9 = opcode("SET 5,C", 8)(lambda self: self._set(Reg.C, 5))
-    opCBEA = opcode("SET 5,D", 8)(lambda self: self._set(Reg.D, 5))
-    opCBEB = opcode("SET 5,E", 8)(lambda self: self._set(Reg.E, 5))
-    opCBEC = opcode("SET 5,H", 8)(lambda self: self._set(Reg.H, 5))
-    opCBED = opcode("SET 5,L", 8)(lambda self: self._set(Reg.L, 5))
-    opCBEE = opcode("SET 5,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 5))
-    opCBEF = opcode("SET 5,A", 8)(lambda self: self._set(Reg.A, 5))
-    opCBF0 = opcode("SET 6,B", 8)(lambda self: self._set(Reg.B, 6))
-    opCBF1 = opcode("SET 6,C", 8)(lambda self: self._set(Reg.C, 6))
-    opCBF2 = opcode("SET 6,D", 8)(lambda self: self._set(Reg.D, 6))
-    opCBF3 = opcode("SET 6,E", 8)(lambda self: self._set(Reg.E, 6))
-    opCBF4 = opcode("SET 6,H", 8)(lambda self: self._set(Reg.H, 6))
-    opCBF5 = opcode("SET 6,L", 8)(lambda self: self._set(Reg.L, 6))
-    opCBF6 = opcode("SET 6,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 6))
-    opCBF7 = opcode("SET 6,A", 8)(lambda self: self._set(Reg.A, 6))
-    opCBF8 = opcode("SET 7,B", 8)(lambda self: self._set(Reg.B, 7))
-    opCBF9 = opcode("SET 7,C", 8)(lambda self: self._set(Reg.C, 7))
-    opCBFA = opcode("SET 7,D", 8)(lambda self: self._set(Reg.D, 7))
-    opCBFB = opcode("SET 7,E", 8)(lambda self: self._set(Reg.E, 7))
-    opCBFC = opcode("SET 7,H", 8)(lambda self: self._set(Reg.H, 7))
-    opCBFD = opcode("SET 7,L", 8)(lambda self: self._set(Reg.L, 7))
-    opCBFE = opcode("SET 7,[HL]", 16)(lambda self: self._set(Reg.MEM_AT_HL, 7))
-    opCBFF = opcode("SET 7,A", 8)(lambda self: self._set(Reg.A, 7))
+    for b in range(8):
+        for offset, arg in enumerate(GEN_REGS):
+            op = 0x80 + b * 0x08 + offset
+            time = 16 if arg == "[HL]" else 8
+            arg = arg.replace("[HL]", "MEM_AT_HL")
+            exec(dedent(f"""
+                @opcode("RES {b},{arg}", {time})
+                def opCB{op:02X}(self):
+                    self.{arg} &= ((0x01 << {b}) ^ 0xFF)
+            """))
+
+    for b in range(8):
+        for offset, arg in enumerate(GEN_REGS):
+            op = 0xC0 + b * 0x08 + offset
+            time = 16 if arg == "[HL]" else 8
+            arg = arg.replace("[HL]", "MEM_AT_HL")
+            exec(dedent(f"""
+                @opcode("SET {b},{arg}", {time})
+                def opCB{op:02X}(self):
+                    self.{arg} |= (0x01 << {b})
+            """))
 
     # </editor-fold>
 
@@ -1660,26 +1366,3 @@ for offset, op in enumerate(["BIT", "RES", "SET"]):
         self.interrupts = True
 
     # </editor-fold>
-
-    # =================================================================
-    # STACK
-    def _push16(self, reg: Reg):
-        """
-        >>> c = CPU()
-        >>> c.B = 1234
-        >>> c._push16(Reg.B)
-        >>> c._pop16(Reg.A)
-        >>> c.A
-        1234
-        """
-        val = getattr(self, reg.value)
-        self.ram[self.SP - 1] = (val & 0xFF00) >> 8
-        self.ram[self.SP] = val & 0xFF
-        self.SP -= 2
-        # print("Pushing %r to stack at %r [%r]" % (val, self.SP, self.ram[-10:]))
-
-    def _pop16(self, reg: Reg):
-        val = (self.ram[self.SP+1] << 8) | self.ram[self.SP+2]
-        # print("Set %r to %r from %r, %r" % (reg, val, self.SP, self.ram[-10:]))
-        setattr(self, reg.value, val)
-        self.SP += 2
