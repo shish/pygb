@@ -3,10 +3,17 @@ from cart import Cart, TestCart
 from textwrap import dedent
 
 
-# 01 - special: PASS
-# 02 - interrupts: not started
-# 03 - op sp,hl: Fail
-# 04 - CE DE failed
+# 01 - special:     PASS
+# 02 - interrupts:  Fail...
+# 03 - op sp,hl:    Fail...
+# 04 - op r,imm:    Fail...
+# 05 - op rp:       PASS
+# 06 - ld r,r:      PASS
+# 07 - jumps:       Fail...
+# 08 - misc:        Fail...
+# 09 - op r,r:      Fail...
+# 10 - bit ops:     Fail...
+# 11 - op a,(hl):   Fail...
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -248,8 +255,6 @@ class CPU:
         if self.ram[0xFF50] == 0:
             src = BOOT
         else:
-            # print("Boot finished")
-            # raise Exception()
             src = self.ram
 
         if self.PC >= 0xFF00:
@@ -701,6 +706,14 @@ class CPU:
     # ===================================
     # 5. AND n
     def _and(self, val):
+        """
+        >>> c = CPU()
+        >>> c.A = 0b0101
+        >>> c.B = 0b0011
+        >>> c.opA0()
+        >>> f"{c.A:04b}"
+        '0001'
+        """
         self.A &= val
         self.FLAG_Z = int(self.A == 0)
         self.FLAG_N = False
@@ -721,6 +734,14 @@ class CPU:
     # ===================================
     # 6. OR n
     def _or(self, val):
+        """
+        >>> c = CPU()
+        >>> c.A = 0b0101
+        >>> c.B = 0b0011
+        >>> c.opB0()
+        >>> f"{c.A:04b}"
+        '0111'
+        """
         self.A |= val
         self.FLAG_Z = int(self.A == 0)
         self.FLAG_N = False
@@ -743,14 +764,11 @@ class CPU:
     def _xor(self, val):
         """
         >>> c = CPU()
-        >>> c.A = 0b0000
-        >>> c.C = 0b1010
-        >>> c._xor(c.C)
-        >>> bin(c.A)
-        '0b1010'
-        >>> c._xor(c.A)
-        >>> bin(c.A)
-        '0b0'
+        >>> c.A = 0b0101
+        >>> c.B = 0b0011
+        >>> c.opA8()
+        >>> f"{c.A:04b}"
+        '0110'
         """
         self.A ^= val
         self.FLAG_Z = int(self.A == 0)
