@@ -1249,9 +1249,10 @@ class CPU:
 
     # ===================================
     # 3. JP [HL]
-    @opcode("JP [HL]", 4)
+    @opcode("JP HL", 4)
     def opE9(self):
-        self.PC = self.ram[self.HL]
+        # ERROR: docs say this is [HL], not HL...
+        self.PC = self.HL
 
     # ===================================
     # 4. JR n
