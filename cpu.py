@@ -206,8 +206,8 @@ class CPU:
 
     def __str__(self):
         s = (
-            "ZNHC PC   SP\n"
-            "%d%d%d%d %04X %04X\n"
+            "ZNHC PC   SP   STACK:\n"
+            "%d%d%d%d %04X %04X (%02X%02X)\n"
             f"A  {self.A:02X} {self.A:08b} {self.A}\n"
             f"B  {self.B:02X} {self.B:08b} {self.B}\n"
             f"C  {self.C:02X} {self.C:08b} {self.C}\n"
@@ -218,6 +218,7 @@ class CPU:
             % (
                 self.FLAG_Z or 0, self.FLAG_N or 0, self.FLAG_H or 0, self.FLAG_C or 0,
                 self.PC, self.SP,
+                self.ram[self.SP], self.ram[self.SP+1],
             )
         )
         if (
@@ -247,7 +248,7 @@ class CPU:
 
         if self.PC >= 0xFF00:
             raise Exception("PC reached IO ports (0x%04X) after %d NOPs" % (self.PC, self._nopslide))
-            
+
         ins = src[self.PC]
         if ins == 0x00:
             self._nopslide += 1
