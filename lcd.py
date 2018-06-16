@@ -86,14 +86,15 @@ class LCD:
         # for some reason when using tile map 1, tiles are 0..255,
         # when using tile map 0, tiles are -128..127
         self.tiles = []
+        for tile_id in range(0x180):  # 384 tiles
+            self.tiles.append(self.get_tile(TILE_DATA_TABLE_1, tile_id, bgp))
+
         if LCDC & LCDC_DATA_SRC:
             table = TILE_DATA_TABLE_1
-            for tile_id in range(0x180):  # 384 tiles
-                self.tiles.append(self.get_tile(table, tile_id, bgp))
+            tile_offset = 0
         else:
             table = TILE_DATA_TABLE_0
-            # need to figure out how to have a tile array with negative IDs?
-            raise Exception("Loading tiles from map 0 is not supported")
+            tile_offset = 0xFF
 
         self.buffer.fill(bgp[0])
 
@@ -119,7 +120,9 @@ class LCD:
                             x += 256
                         if y < -8:
                             y += 256
-                        self.buffer.blit(self.tiles[tile_id], (x, y))
+                        if tile_offset and tile_id > 0x7F:
+                            tile_id -= 0xFF
+                        self.buffer.blit(self.tiles[tile_offset + tile_id], (x, y))
 
             # Window tiles
             if LCDC & LCDC_WINDOW_ENABLED:
@@ -131,7 +134,9 @@ class LCD:
                 for y in range(144 // 8):
                     for x in range(160 // 8):
                         tile_id = self.cpu.ram[window_map + y * 32 + x]
-                        self.buffer.blit(self.tiles[tile_id], (x * 8 + WND_X, y * 8 + WND_Y))
+                        if tile_offset and tile_id > 0x7F:
+                            tile_id -= 0xFF
+                        self.buffer.blit(self.tiles[tile_offset + tile_id], (x * 8 + WND_X, y * 8 + WND_Y))
 
             # Sprites
             if LCDC & LCDC_OBJ_ENABLED:
@@ -144,12 +149,14 @@ class LCD:
                     # FIXME: use obp instead of bgp
                     # + flags support
                     y, x, tile_id, flags = self.cpu.ram[OAM_BASE + (sprite_id*4):OAM_BASE + (sprite_id*4) + 4]
+                    if tile_offset and tile_id > 0x7F:
+                        tile_id -= 0xFF
                     # Bit7   OBJ-to-BG Priority (0=OBJ Above BG, 1=OBJ Behind BG color 1-3)
                     #        (Used for both BG and Window. BG color 0 is always behind OBJ)
                     # Bit6   Y flip          (0=Normal, 1=Vertically mirrored)
                     # Bit5   X flip          (0=Normal, 1=Horizontally mirrored)
                     # Bit4   Palette number  **Non CGB Mode Only** (0=OBP0, 1=OBP1)
-                    self.buffer.blit(self.tiles[tile_id], (x, y))
+                    self.buffer.blit(self.tiles[tile_offset + tile_id], (x, y))
 
         # Display all of VRAM
         else:
@@ -161,7 +168,9 @@ class LCD:
             for y in range(32):
                 for x in range(32):
                     tile_id = self.cpu.ram[background_map + y * 32 + x]
-                    self.buffer.blit(self.tiles[tile_id], (x * 8, y * 8))
+                    if tile_offset and tile_id > 0x7F:
+                        tile_id -= 0xFF
+                    self.buffer.blit(self.tiles[tile_offset + tile_id], (x * 8, y * 8))
 
             # Background scroll border
             pygame.draw.rect(self.buffer, pygame.Color(255, 0, 0), (SCROLL_X, SCROLL_Y, 160, 144), 1)
