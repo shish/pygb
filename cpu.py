@@ -656,7 +656,7 @@ class CPU:
     op83 = opcode("ADD A,E", 4)(lambda self: self._add(self.E))
     op84 = opcode("ADD A,H", 4)(lambda self: self._add(self.H))
     op85 = opcode("ADD A,L", 4)(lambda self: self._add(self.L))
-    op86 = opcode("ADD A,[HL]", 8)(lambda self: self._add(self.ram[self.HL]))
+    op86 = opcode("ADD A,[HL]", 8)(lambda self: self._add(self.MEM_AT_HL))
     opC6 = opcode("ADD A,n", 8, "B")(lambda self, val: self._add(val))
 
     # ===================================
@@ -676,7 +676,7 @@ class CPU:
     op8B = opcode("ADC A,E", 4)(lambda self: self._adc(self.E))
     op8C = opcode("ADC A,H", 4)(lambda self: self._adc(self.H))
     op8D = opcode("ADC A,L", 4)(lambda self: self._adc(self.L))
-    op8E = opcode("ADC A,[HL]", 8)(lambda self: self._adc(self.ram[self.HL]))
+    op8E = opcode("ADC A,[HL]", 8)(lambda self: self._adc(self.MEM_AT_HL))
     opCE = opcode("ADC A,n", 8, "B")(lambda self, val: self._adc(val))
 
     # ===================================
@@ -696,7 +696,7 @@ class CPU:
     op93 = opcode("SUB A,E", 4)(lambda self: self._sub(self.E))
     op94 = opcode("SUB A,H", 4)(lambda self: self._sub(self.H))
     op95 = opcode("SUB A,L", 4)(lambda self: self._sub(self.L))
-    op96 = opcode("SUB A,[HL]", 8)(lambda self: self._sub(self.ram[self.HL]))
+    op96 = opcode("SUB A,[HL]", 8)(lambda self: self._sub(self.MEM_AT_HL))
     opD6 = opcode("SUB A,n", 8, "B")(lambda self, val: self._sub(val))
 
     # ===================================
@@ -716,7 +716,7 @@ class CPU:
     op9B = opcode("SBC A,E", 4)(lambda self: self._sbc(self.E))
     op9C = opcode("SBC A,H", 4)(lambda self: self._sbc(self.H))
     op9D = opcode("SBC A,L", 4)(lambda self: self._sbc(self.L))
-    op9E = opcode("SBC A,[HL]", 8)(lambda self: self._sbc(self.ram[self.HL]))
+    op9E = opcode("SBC A,[HL]", 8)(lambda self: self._sbc(self.MEM_AT_HL))
     opDE = opcode("SBC A,n", 8, "B")(lambda self, val: self._sbc(val))
 
     # ===================================
@@ -735,7 +735,7 @@ class CPU:
     opA3 = opcode("AND E", 4)(lambda self: self._and(self.E))
     opA4 = opcode("AND H", 4)(lambda self: self._and(self.H))
     opA5 = opcode("AND L", 4)(lambda self: self._and(self.L))
-    opA6 = opcode("AND [HL]", 8)(lambda self: self._and(self.ram[self.HL]))
+    opA6 = opcode("AND [HL]", 8)(lambda self: self._and(self.MEM_AT_HL))
     opE6 = opcode("AND n", 8, "B")(lambda self, n: self._and(self.ram[n]))
 
     # ===================================
@@ -754,7 +754,7 @@ class CPU:
     opB3 = opcode("OR E", 4)(lambda self: self._or(self.E))
     opB4 = opcode("OR H", 4)(lambda self: self._or(self.H))
     opB5 = opcode("OR L", 4)(lambda self: self._or(self.L))
-    opB6 = opcode("OR [HL]", 8)(lambda self: self._or(self.ram[self.HL]))
+    opB6 = opcode("OR [HL]", 8)(lambda self: self._or(self.MEM_AT_HL))
     opF6 = opcode("OR n", 8, "B")(lambda self, n: self._or(self.ram[n]))
 
     # ===================================
@@ -784,7 +784,7 @@ class CPU:
     opAB = opcode("XOR E", 4)(lambda self: self._xor(self.E))
     opAC = opcode("XOR H", 4)(lambda self: self._xor(self.H))
     opAD = opcode("XOR L", 4)(lambda self: self._xor(self.L))
-    opAE = opcode("XOR [HL]", 8)(lambda self: self._xor(self.ram[self.HL]))
+    opAE = opcode("XOR [HL]", 8)(lambda self: self._xor(self.MEM_AT_HL))
     opEE = opcode("XOR n", 8, "B")(lambda self, n: self._xor(self.ram[n]))
 
     # ===================================
@@ -803,7 +803,7 @@ class CPU:
     opBB = opcode("CP E", 4)(lambda self: self._cp(self.E))
     opBC = opcode("CP H", 4)(lambda self: self._cp(self.H))
     opBD = opcode("CP L", 4)(lambda self: self._cp(self.L))
-    opBE = opcode("CP [HL]", 8)(lambda self: self._cp(self.ram[self.HL]))
+    opBE = opcode("CP [HL]", 8)(lambda self: self._cp(self.MEM_AT_HL))
     opFE = opcode("CP n", 8, "B")(lambda self, val: self._cp(val))
 
     # ===================================
