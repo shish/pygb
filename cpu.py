@@ -5,7 +5,7 @@ from textwrap import dedent
 
 # 01 - special:     PASS
 # 02 - interrupts:  Fail...
-# 03 - op sp,hl:    Fail     33 3B 39 F9 E8 E8 F8 F8 (all)
+# 03 - op sp,hl:    PASS
 # 04 - op r,imm:    PASS
 # 05 - op rp:       PASS
 # 06 - ld r,r:      PASS
@@ -596,7 +596,8 @@ class CPU:
     # 5. LD [nn],SP
     @opcode("LD [nn],SP", 20, "H")
     def op08(self, val):
-        self.ram[val] = self.SP
+        self.ram[val+1] = (self.SP >> 8) & 0xFF
+        self.ram[val] = self.SP & 0xFF
 
     # ===================================
     # 6. PUSH nn
@@ -902,8 +903,9 @@ class CPU:
     # 2. ADD SP,n
     @opcode("ADD SP n", 16, "b")
     def opE8(self, val):
-        self.FLAG_H = ((self.SP & 0x0fff) + (val & 0x0fff) > 0x0fff)
-        self.FLAG_C = (self.SP + val > 0xffff)
+        tmp = self.SP + val
+        self.FLAG_H = bool((self.SP ^ val ^ tmp) & 0x10)
+        self.FLAG_C = bool((self.SP ^ val ^ tmp) & 0x100)
         self.SP += val
         self.SP &= 0xFFFF
         self.FLAG_Z = False
