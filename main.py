@@ -19,15 +19,15 @@ def info(cart):
     #     print("%02X %s" % (n, op.name if op else "-"))
 
 
-def run(cart, debug, headless):
-    with open(cart, "rb") as fp:
+def run(args):
+    with open(args.cart, "rb") as fp:
         data = fp.read()
     cart = Cart(data)
-    cpu = CPU(cart, debug=debug)
+    cpu = CPU(cart, debug=args.debug_cpu)
 
     lcd = None
-    if not headless:
-        lcd = LCD(cpu, debug=debug)
+    if not args.headless:
+        lcd = LCD(cpu, debug=args.debug_gpu)
 
     running = True
     clock = 0
@@ -77,7 +77,8 @@ def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode")
     parser.add_argument("cart")
-    parser.add_argument("--debug", action="store_true", default=False)
+    parser.add_argument("-d", "--debug-cpu", action="store_true", default=False)
+    parser.add_argument("-D", "--debug-gpu", action="store_true", default=False)
     parser.add_argument("--headless", action="store_true", default=False)
     args = parser.parse_args()
 
@@ -85,7 +86,7 @@ def main(argv: List[str]) -> int:
         info(args.cart)
 
     if args.mode == "run":
-        run(args.cart, args.debug, args.headless)
+        run(args)
 
     return 0
 
