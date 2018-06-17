@@ -16,6 +16,7 @@ class LCD:
         self.cpu = cpu
         self._game_only = not debug
         self.tiles = []
+        self._last_tile_data = []
 
         pygame.init()
         if self._game_only:
@@ -84,10 +85,15 @@ class LCD:
         # print("SCROLL ", SCROLL_X, SCROLL_Y)
 
         # for some reason when using tile map 1, tiles are 0..255,
-        # when using tile map 0, tiles are -128..127
-        self.tiles = []
-        for tile_id in range(0x180):  # 384 tiles
-            self.tiles.append(self.get_tile(TILE_DATA_TABLE_1, tile_id, bgp))
+        # when using tile map 0, tiles are -128..127; also, they overlap
+        # T1: [0...........255]
+        # T2:        [-128..........127]
+        tile_data = self.cpu.ram[TILE_DATA_TABLE_1:TILE_DATA_TABLE_1+384*16]
+        if self._last_tile_data != tile_data:
+            self.tiles = []
+            for tile_id in range(0x180):  # 384 tiles
+                self.tiles.append(self.get_tile(TILE_DATA_TABLE_1, tile_id, bgp))
+            self._last_tile_data = tile_data
 
         if LCDC & LCDC_DATA_SRC:
             table = TILE_DATA_TABLE_1
