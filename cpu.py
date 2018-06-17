@@ -5,15 +5,26 @@ from textwrap import dedent
 
 # 01 - special:     PASS
 # 02 - interrupts:  Fail...
-# 03 - op sp,hl:    Fail...
+# 03 - op sp,hl:    Fail     33 3B 39 F9 E8 E8 F8 F8 (all)
 # 04 - op r,imm:    PASS
 # 05 - op rp:       PASS
 # 06 - ld r,r:      PASS
-# 07 - jumps:       Fail...
-# 08 - misc:        Fail...
-# 09 - op r,r:      Fail...
-# 10 - bit ops:     Fail...
-# 11 - op a,(hl):   Fail...
+# 07 - jumps:       Fail     18 20 28 30 38   (JR) - all
+#                            C2 C3 CA D2 DA   (JP)
+#                            C4 CC CD D4 DC   (CALL)
+#                            C0 C8 C9 D0 D8 D9   (RET, RETI)
+#                            C7 CF D7 DF E7 EF F7 FF   (RST)
+# 08 - misc:        Fail     F0 E0 F2 E2 FA EA 08   (LDH) - all
+#                            01 11 21 31   (LD nn)
+#                            F5 C5 D5 E5   (PUSH rr)
+#                            F1 C1 D1 E1   (POP rr)
+# 09 - op r,r:      Fail     07 17 0F 1F   (RLCA, RLA, RRCA, RRA)
+#                        CB: 10 11 12 13 14 15 17   (RL r)
+# 10 - bit ops:     Fail CB: 40 41 42 43 44 45 47 48 49 4A 4B 4C 4D 4F  (BIT n,r)
+#                        CB: 50 51 52 53 54 55 57 58 59 5A 5B 5C 5D 5F
+#                        CB: 60 61 62 63 64 65 67 68 69 6A 6B 6C 6D 6F
+#                        CB: 70 71 72 73 74 75 77 78 79 7A 7B 7C 7D 7F
+# 11 - op a,(hl):   Fail CB: 16 46 4E 56 5E 66 6E 76 7E    (RL (HL), BIT n,(HL))
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -904,8 +915,8 @@ class CPU:
     # ===================================
     # 3. INC nn
     def _inc16(self, reg):
-        val = getattr(self, reg) + 1
-        val &= 0xFFFF
+        val = getattr(self, reg)
+        val = (val + 1) & 0xFFFF
         setattr(self, reg, val)
 
     op03 = opcode("INC BC", 8)(lambda self: self._inc16("BC"))
@@ -916,8 +927,8 @@ class CPU:
     # ===================================
     # 4. DEC nn
     def _dec16(self, reg):
-        val = getattr(self, reg) - 1
-        val &= 0xFFFF
+        val = getattr(self, reg)
+        val = (val - 1) & 0xFFFF
         setattr(self, reg, val)
 
     op0B = opcode("DEC BC", 8)(lambda self: self._dec16("BC"))
@@ -1172,11 +1183,21 @@ class CPU:
     def _rl(self, reg: Reg):
         """
         >>> c = CPU()
-        >>> c.A = 0b10101010
-        >>> c.FLAG_C = False
+        >>> c.A = 0xAA
+        >>> c.FLAG_C = True
+
         >>> c._rl(Reg.A)
-        >>> bin(c.A), c.FLAG_C
-        ('0b1010100', True)
+        >>> hex(c.A), c.FLAG_C
+        ('0x55', True)
+        >>> c._rl(Reg.A)
+        >>> hex(c.A), c.FLAG_C
+        ('0xab', False)
+        >>> c._rl(Reg.A)
+        >>> hex(c.A), c.FLAG_C
+        ('0x56', True)
+        >>> c._rl(Reg.A)
+        >>> hex(c.A), c.FLAG_C
+        ('0xad', False)
         """
         orig_c = self.FLAG_C
         val = getattr(self, reg.value)
@@ -1210,7 +1231,7 @@ class CPU:
         self.FLAG_C = bool(val & 0x1)
         val >>= 1
         if orig_c:
-            val |= 1<<7
+            val |= 1 << 7
         setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
@@ -1257,21 +1278,39 @@ class CPU:
     # <editor-fold description="3.3.7 Bit Opcodes">
     # ===================================
     # 1. BIT b,r
-    # 2. SET b,r
-    # 3. RES b,r
+    def _test_bit(self):
+        """
+        >>> c = CPU()
+        >>> c.B = 0xFF
+        >>> c.opCB40()  # BIT 0,B
+        >>> c.FLAG_Z
+        True
+        >>> c.opCB78()  # BIT 7,B
+        >>> c.FLAG_Z
+        True
+        >>> c.B = 0x00
+        >>> c.opCB40()
+        >>> c.FLAG_Z
+        False
+        >>> c.opCB78()
+        >>> c.FLAG_Z
+        False
+        """
     for b in range(8):
-        for offset, arg in enumerate(GEN_REGS):
+        for offset, reg in enumerate(GEN_REGS):
             op = 0x40 + b * 0x08 + offset
-            time = 16 if arg == "[HL]" else 8
-            arg = arg.replace("[HL]", "MEM_AT_HL")
+            time = 16 if reg == "[HL]" else 8
+            arg = reg.replace("[HL]", "MEM_AT_HL")
             exec(dedent(f"""
-                @opcode("BIT {b},{arg}", {time})
+                @opcode("BIT {b},{reg}", {time})
                 def opCB{op:02X}(self):
-                    self.FLAG_Z = bool(self.{arg} & (0x01 << {b}))
+                    self.FLAG_Z = bool(self.{arg} & (1 << {b}))
                     self.FLAG_N = False
                     self.FLAG_H = True
             """))
 
+    # ===================================
+    # 2. SET b,r
     for b in range(8):
         for offset, arg in enumerate(GEN_REGS):
             op = 0x80 + b * 0x08 + offset
@@ -1283,6 +1322,8 @@ class CPU:
                     self.{arg} &= ((0x01 << {b}) ^ 0xFF)
             """))
 
+    # ===================================
+    # 3. RES b,r
     for b in range(8):
         for offset, arg in enumerate(GEN_REGS):
             op = 0xC0 + b * 0x08 + offset
