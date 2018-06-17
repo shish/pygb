@@ -20,10 +20,7 @@ from textwrap import dedent
 #                            F1 C1 D1 E1   (POP rr)
 # 09 - op r,r:      Fail     07 17 0F 1F   (RLCA, RLA, RRCA, RRA)
 #                        CB: 10 11 12 13 14 15 17   (RL r)
-# 10 - bit ops:     Fail CB: 40 41 42 43 44 45 47 48 49 4A 4B 4C 4D 4F  (BIT n,r)
-#                        CB: 50 51 52 53 54 55 57 58 59 5A 5B 5C 5D 5F
-#                        CB: 60 61 62 63 64 65 67 68 69 6A 6B 6C 6D 6F
-#                        CB: 70 71 72 73 74 75 77 78 79 7A 7B 7C 7D 7F
+# 10 - bit ops:     PASS
 # 11 - op a,(hl):   Fail CB: 16 46 4E 56 5E 66 6E 76 7E    (RL (HL), BIT n,(HL))
 
 try:
@@ -1304,7 +1301,7 @@ class CPU:
             exec(dedent(f"""
                 @opcode("BIT {b},{reg}", {time})
                 def opCB{op:02X}(self):
-                    self.FLAG_Z = bool(self.{arg} & (1 << {b}))
+                    self.FLAG_Z = not bool(self.{arg} & (1 << {b}))
                     self.FLAG_N = False
                     self.FLAG_H = True
             """))
