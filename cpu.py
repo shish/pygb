@@ -21,7 +21,7 @@ from textwrap import dedent
 # 09 - op r,r:      Fail     07 17 0F 1F   (RLCA, RLA, RRCA, RRA)
 #                        CB: 10 11 12 13 14 15 17   (RL r)
 # 10 - bit ops:     PASS
-# 11 - op a,(hl):   Fail CB: 16 46 4E 56 5E 66 6E 76 7E    (RL (HL), BIT n,(HL))
+# 11 - op a,(hl):   Fail CB: 16     (RL (HL))
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -867,8 +867,8 @@ class CPU:
     # 10. DEC
     def _dec8(self, reg: Reg):
         val = getattr(self, reg.value)
-        self.FLAG_H = val & 0x0F == 0x00
         val = (val - 1) & 0xFF
+        self.FLAG_H = val & 0x0F == 0x0F
         setattr(self, reg.value, val)
         self.FLAG_Z = val == 0
         self.FLAG_N = True
