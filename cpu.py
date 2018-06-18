@@ -11,7 +11,7 @@ from textwrap import dedent
 # 06 - ld r,r:      PASS
 # 07 - jumps:       PASS
 # 08 - misc:        PASS
-# 09 - op r,r:      Fail CB: 10 11 12 13 14 15 17   (RL r)
+# 09 - op r,r:      PASS
 # 10 - bit ops:     PASS
 # 11 - op a,(hl):   PASS
 
@@ -1163,7 +1163,8 @@ class CPU:
         val <<= 1
         if self.FLAG_C:
             val |= 1
-        setattr(self, reg.value, val & 0xFF)
+        val &= 0xFF
+        setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
         self.FLAG_Z = val == 0
