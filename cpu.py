@@ -11,8 +11,7 @@ from textwrap import dedent
 # 06 - ld r,r:      PASS
 # 07 - jumps:       PASS
 # 08 - misc:        PASS
-# 09 - op r,r:      Fail     07 17 0F 1F   (RLCA, RLA, RRCA, RRA)
-#                        CB: 10 11 12 13 14 15 17   (RL r)
+# 09 - op r,r:      Fail CB: 10 11 12 13 14 15 17   (RL r)
 # 10 - bit ops:     PASS
 # 11 - op a,(hl):   Fail CB: 16     (RL (HL))
 
@@ -1095,8 +1094,8 @@ class CPU:
         ('0b1010100', True)
         """
         self.FLAG_C = (self.A & 0b10000000) != 0
-        self.A = ((self.A << 1) & 0xFF)
-        self.FLAG_Z = self.A == 0
+        self.A = ((self.A << 1) | (self.A >> 7)) & 0xFF
+        self.FLAG_Z = False
         self.FLAG_N = False
         self.FLAG_H = False
 
@@ -1114,8 +1113,8 @@ class CPU:
         """
         old_c = self.FLAG_C
         self.FLAG_C = (self.A & 0b10000000) != 0
-        self.A = ((self.A << 1) & 0xFF) | old_c
-        self.FLAG_Z = self.A == 0
+        self.A = ((self.A << 1) | old_c) & 0xFF
+        self.FLAG_Z = False
         self.FLAG_N = False
         self.FLAG_H = False
 
@@ -1132,8 +1131,8 @@ class CPU:
         ('0b1010101', False)
         """
         self.FLAG_C = (self.A & 0b00000001) != 0
-        self.A >>= 1
-        self.FLAG_Z = self.A == 0
+        self.A = ((self.A >> 1) | (self.A << 7)) & 0xFF
+        self.FLAG_Z = False
         self.FLAG_N = False
         self.FLAG_H = False
 
@@ -1151,11 +1150,10 @@ class CPU:
         """
         old_c = self.FLAG_C
         self.FLAG_C = (self.A & 0b00000001) != 0
-        self.A >>= 1
-        self.A |= old_c << 7
-        self.FLAG_N = 0
-        self.FLAG_H = 0
-        self.FLAG_Z = int(self.A == 0)
+        self.A = (self.A >> 1) | (old_c << 7)
+        self.FLAG_N = False
+        self.FLAG_H = False
+        self.FLAG_Z = False
 
     # ===================================
     # 5. RLC
