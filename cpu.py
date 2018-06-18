@@ -9,15 +9,8 @@ from textwrap import dedent
 # 04 - op r,imm:    PASS
 # 05 - op rp:       PASS
 # 06 - ld r,r:      PASS
-# 07 - jumps:       Fail     18 20 28 30 38   (JR) - all
-#                            C2 C3 CA D2 DA   (JP)
-#                            C4 CC CD D4 DC   (CALL)
-#                            C0 C8 C9 D0 D8 D9   (RET, RETI)
-#                            C7 CF D7 DF E7 EF F7 FF   (RST)
-# 08 - misc:        Fail     F0 E0 F2 E2 FA EA 08   (LDH) - all
-#                            01 11 21 31   (LD nn)
-#                            F5 C5 D5 E5   (PUSH rr)
-#                            F1 C1 D1 E1   (POP rr)
+# 07 - jumps:       PASS
+# 08 - misc:        PASS
 # 09 - op r,r:      Fail     07 17 0F 1F   (RLCA, RLA, RRCA, RRA)
 #                        CB: 10 11 12 13 14 15 17   (RL r)
 # 10 - bit ops:     PASS
@@ -239,7 +232,7 @@ class CPU:
             % (
                 self.FLAG_Z or 0, self.FLAG_N or 0, self.FLAG_H or 0, self.FLAG_C or 0,
                 self.PC, self.SP,
-                self.ram[self.SP], self.ram[(self.SP+1) % len(self.ram)],
+                self.ram[self.SP], self.ram[self.SP+1],
             )
         )
         if (
@@ -612,7 +605,7 @@ class CPU:
         """
         val = getattr(self, reg.value)
         self.ram[self.SP - 1] = (val & 0xFF00) >> 8
-        self.ram[self.SP] = val & 0xFF
+        self.ram[self.SP - 2] = val & 0xFF
         self.SP -= 2
         # print("Pushing %r to stack at %r [%r]" % (val, self.SP, self.ram[-10:]))
 
@@ -624,7 +617,7 @@ class CPU:
     # ===================================
     # 6. POP nn
     def _pop16(self, reg: Reg):
-        val = (self.ram[self.SP+1] << 8) | self.ram[self.SP+2]
+        val = (self.ram[self.SP+1] << 8) | self.ram[self.SP]
         # print("Set %r to %r from %r, %r" % (reg, val, self.SP, self.ram[-10:]))
         setattr(self, reg.value, val)
         self.SP += 2
