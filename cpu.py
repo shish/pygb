@@ -13,7 +13,7 @@ from textwrap import dedent
 # 08 - misc:        PASS
 # 09 - op r,r:      Fail CB: 10 11 12 13 14 15 17   (RL r)
 # 10 - bit ops:     PASS
-# 11 - op a,(hl):   Fail CB: 16     (RL (HL))
+# 11 - op a,(hl):   PASS
 
 try:
     # boot with the logo scroll if we have a boot rom
@@ -1192,10 +1192,8 @@ class CPU:
         orig_c = self.FLAG_C
         val = getattr(self, reg.value)
         self.FLAG_C = bool(val & 0b10000000)
-        val <<= 1
-        if orig_c:
-            val |= 1
-        setattr(self, reg.value, val & 0xFF)
+        val = ((val << 1) | orig_c) & 0xFF
+        setattr(self, reg.value, val)
         self.FLAG_N = False
         self.FLAG_H = False
         self.FLAG_Z = val == 0
